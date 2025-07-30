@@ -4,6 +4,8 @@ import "./globals.css";
 import { GradientPalette, MeshGradient } from "@blur-ui/mesh-gradient";
 import { Background } from "@/components/ui/background";
 import { Header } from "@/components/ui/header";
+import { Providers } from "@/components/providers";
+import '@rainbow-me/rainbowkit/styles.css'; 
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -43,8 +45,10 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${poppins.variable} antialiased bg-gradient-to-r from-gradient-start to-gradient-end flex flex-col`}
       >
-        <Header />
-        {children}
+        <Providers>
+          <Header />
+          {children}
+        </Providers>
         <Background />
       </body>
     </html>

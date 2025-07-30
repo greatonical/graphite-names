@@ -17,7 +17,7 @@ export default function Home() {
               "perfect domain",
               "identity",
               "profile",
-              "everything you need",
+              "cool spot",
             ]}
             loop={0}
             cursor
@@ -36,7 +36,7 @@ export default function Home() {
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
         />
-        <Button text="Search" />
+        <Button text="Search" className="text-black-600" />
       </div>
 
       <ButtonWrapper className="flex flex-row gap-x-2 items-center absolute bottom-12 self-center font-medium bg-black-600/50 px-4 py-3 rounded-full">
