@@ -1,3 +1,5 @@
+import toast from "react-hot-toast";
+import { style } from "../constants/style.constants";
 /**
  * A robust, cross-browser function to copy text to the clipboard.
  * It follows the modern standard of using the async Clipboard API first,
@@ -18,7 +20,10 @@ export const copyToClipboard = async (text: string): Promise<boolean> => {
     } catch (error) {
       // The API can fail if the user denies permission or if the document is not focused.
       // We log a warning and proceed to the fallback method.
-      console.warn("Clipboard API failed, falling back to legacy method.", error);
+      console.warn(
+        "Clipboard API failed, falling back to legacy method.",
+        error
+      );
     }
   }
 
@@ -27,20 +32,20 @@ export const copyToClipboard = async (text: string): Promise<boolean> => {
   // We create a temporary, invisible textarea to hold the text for copying.
   const textArea = document.createElement("textarea");
   textArea.value = text;
-  
+
   // Make the textarea invisible but still part of the DOM
   textArea.style.position = "fixed";
   textArea.style.left = "-9999px";
   textArea.style.top = "-9999px";
-  textArea.setAttribute('readonly', ''); // Prevent keyboard from showing on mobile
-  
+  textArea.setAttribute("readonly", ""); // Prevent keyboard from showing on mobile
+
   document.body.appendChild(textArea);
-  
+
   textArea.select();
-  
+
   try {
     // Attempt to copy the selected text
-    const successful = document.execCommand('copy');
+    const successful = document.execCommand("copy");
     if (successful) {
       return true;
     } else {
@@ -54,5 +59,17 @@ export const copyToClipboard = async (text: string): Promise<boolean> => {
   } finally {
     // Always clean up by removing the temporary textarea
     document.body.removeChild(textArea);
+  }
+};
+
+// Function to ONLY copy the link
+export const handleCopy = async (value: string) => {
+  if (!value) return;
+
+  const copied = await copyToClipboard(value);
+  if (copied) {
+    toast.success("Copied successfully", { style: style.toast });
+  } else {
+    toast.error("Could not copy", { style: style.toast });
   }
 };

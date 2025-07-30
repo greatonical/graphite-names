@@ -5,6 +5,7 @@ import { GradientPalette, MeshGradient } from "@blur-ui/mesh-gradient";
 import { Background } from "@/components/ui/background";
 import { Header } from "@/components/ui/header";
 import { Providers } from "@/components/providers";
+import {Toaster} from "react-hot-toast"
 import '@rainbow-me/rainbowkit/styles.css'; 
 
 const geistSans = Geist({
@@ -48,6 +49,7 @@ export default function RootLayout({
         <Providers>
           <Header />
           {children}
+          <Toaster/>
         </Providers>
         <Background />
       </body>

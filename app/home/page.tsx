@@ -27,7 +27,7 @@ export default function Home() {
             delaySpeed={1000}
           />
         </span>
-        on <span className="text-green-400">Graphite</span>
+        on <span className="text-primary">Graphite</span>
       </h1>
 
       <div className="flex flex-row items-center w-full gap-x-4 mt-2">
