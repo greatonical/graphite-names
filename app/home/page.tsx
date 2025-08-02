@@ -2,23 +2,88 @@
 import { Button, ButtonWrapper } from "@/components/ui/button";
 import { SearchTextInput } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Typewriter } from "react-simple-typewriter";
+import toast from "react-hot-toast";
+import { useDomainAvailability } from "@/lib/hooks/useDomainAvailability";
+import { DomainResult } from "@/components/ui/domain-result";
+import { style } from "@/lib/constants/style.constants";
 
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
+  const {
+    domainResult,
+    isSearching,
+    checkDomainAvailability,
+    purchaseDomain,
+    isPurchasing,
+    isConfirming,
+    isSuccess,
+    purchaseError,
+  } = useDomainAvailability();
+
+  const handleSearch = () => {
+    if (searchQuery.trim()) {
+      checkDomainAvailability(searchQuery.trim().toLowerCase());
+    }
+  };
+
+  const handlePurchase = async (
+    domain: string,
+    totalPrice: bigint,
+    duration: number,
+    resolver?: `0x${string}`
+  ) => {
+    try {
+      console.log("Home: Starting purchase...", {
+        domain,
+        totalPrice,
+        duration,
+        resolver,
+      });
+      await purchaseDomain(domain, totalPrice, duration, resolver);
+      console.log("Home: Purchase initiated successfully");
+    } catch (error) {
+      console.error("Purchase failed:", error);
+      toast.error("Purchase failed. Please try again.", { style: style.toast });
+      // You can add toast notifications here
+    }
+  };
+
+  // Handle successful purchase
+  useEffect(() => {
+    if (isSuccess) {
+      console.log("Purchase successful!");
+      toast.success("Purchase successful!.", {
+        style: style.toast,
+      });
+      setSearchQuery("");
+      // Optionally refresh the search result
+      if (domainResult) {
+        setTimeout(() => {
+          checkDomainAvailability(domainResult.domain);
+        }, 2000); // Wait 2 seconds for the transaction to be processed
+      }
+    }
+  }, [isSuccess, domainResult, checkDomainAvailability]);
+
+  // Handle purchase errors
+  useEffect(() => {
+    if (purchaseError) {
+      console.error("Purchase failed. Please try again.", purchaseError);
+      toast.error(`Purchase failed: ${purchaseError.message}`, {
+        style: style.toast,
+      });
+    }
+  }, [purchaseError]);
+
   return (
     <main className="bg-transparent w-screen h-screen px-40 flex flex-col justify-center relative">
       <h1 className="text-2xl font-medium text-white font-poppins">
         Find your{" "}
         <span className="text-primary font-poppins">
           <Typewriter
-            words={[
-              "perfect domain",
-              "identity",
-              "profile",
-              "cool spot",
-            ]}
+            words={["perfect domain", "identity", "profile", "cool spot"]}
             loop={0}
             cursor
             cursorStyle=" "
@@ -35,13 +100,33 @@ export default function Home() {
           className="w-full py-5"
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              handleSearch();
+            }
+          }}
         />
-        <Button text="Search" className="text-black-600" />
+        <Button
+          text={isSearching ? "Searching..." : "Search"}
+          onClick={handleSearch}
+          disabled={isSearching || !searchQuery.trim()}
+          className="text-black-600"
+        />
       </div>
+
+      {/* Domain Result */}
+      {domainResult && (
+        <DomainResult
+          result={domainResult}
+          onPurchase={handlePurchase}
+          isPurchasing={isPurchasing}
+          isConfirming={isConfirming}
+        />
+      )}
 
       <ButtonWrapper className="flex flex-row gap-x-2 items-center absolute bottom-12 self-center font-medium bg-black-600/50 px-4 py-3 rounded-full">
         <Text className="text-primary">Scroll down</Text>
-         <svg
+        <svg
           className="animate-bounce ease-in-out duration-[50] transition-all"
           xmlns="http://www.w3.org/2000/svg"
           width="14"

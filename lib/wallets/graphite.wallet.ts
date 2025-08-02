@@ -2,6 +2,8 @@
 import { Wallet } from "@rainbow-me/rainbowkit";
 import { createConnector } from "wagmi";
 import type { Chain } from "viem";
+import toast from "react-hot-toast";
+import { style } from "../constants/style.constants";
 
 declare global {
   interface Window {
@@ -52,11 +54,11 @@ function graphiteWalletConnector() {
       try {
         if (!window.graphite) {
           throw new Error("Graphite Wallet not installed");
-          alert("Graphite is not installed")
+          toast.success("Graphite is not installed", {style: style.toast})
         }
 
         const address = await window.graphite.enable();
-        const defaultChainId = chainId || 440017;
+        const defaultChainId = chainId || 54170;
 
         return {
           accounts: [address as `0x${string}`],

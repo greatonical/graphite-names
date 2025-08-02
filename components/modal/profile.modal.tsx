@@ -77,9 +77,9 @@ const router = useRouter()
         >
           <Icon
             icon={route.icon}
-            className="w-4 h-4 mr-3 text-gray-600 dark:text-gray-400"
+            className="w-4 h-4 mr-3 text-gray-400"
           />
-          <Text className="text-gray-900 dark:text-white text-sm">
+          <Text className="text-white text-sm">
             {route.title}
           </Text>
         </button>
