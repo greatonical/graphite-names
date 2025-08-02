@@ -45,7 +45,7 @@ export const AlternateConnectButton = () => {
         <button
           ref={profileButtonRef}
           onClick={() => setIsProfileModalOpen(!isProfileModalOpen)}
-          className="flex items-center justify-center w-8 h-8 bg-primary hover:bg-opacity-90 rounded-full transition-colors"
+          className="flex items-center justify-center w-8 h-8 bg-primary hover:bg-opacity-90 rounded-full transition-colors cursor-pointer"
         >
           <Icon icon="mdi:account" className="w-5 h-5 text-black-600" />
         </button>

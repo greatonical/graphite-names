@@ -124,10 +124,10 @@ export default function Home() {
         />
       )}
 
-      <ButtonWrapper className="flex flex-row gap-x-2 items-center absolute bottom-12 self-center font-medium bg-black-600/50 px-4 py-3 rounded-full">
-        <Text className="text-primary">Scroll down</Text>
+      <ButtonWrapper className="flex flex-row gap-x-2 items-center absolute bottom-12 self-center font-medium group bg-white/5 hover:desktop:bg-primary hover:desktop:text-black-600 px-4 py-3 rounded-full">
+        <Text className="text-primary group-hover:text-black">Scroll down</Text>
         <svg
-          className="animate-bounce ease-in-out duration-[50] transition-all"
+          className="animate-bounce ease-in-out duration-[50] transition-all stroke-white group-hover:stroke-black-600"
           xmlns="http://www.w3.org/2000/svg"
           width="14"
           height="9"
@@ -136,7 +136,7 @@ export default function Home() {
         >
           <path
             d="M15.5 1L9.20711 7.29289C8.81658 7.68342 8.18342 7.68342 7.79289 7.29289L1.5 0.999999"
-            stroke="white"
+            // stroke="white"
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"

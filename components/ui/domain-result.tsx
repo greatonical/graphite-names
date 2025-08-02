@@ -68,7 +68,7 @@ export const DomainResult: React.FC<DomainResultProps> = ({
         <div className="flex items-center space-x-4">
           <div
             className={`w-3 h-3 rounded-full ${
-              isAvailable ? "bg-green-400" : "bg-red-400"
+              isAvailable ? "bg-primary" : "bg-red-500"
             }`}
           ></div>
 
@@ -78,7 +78,7 @@ export const DomainResult: React.FC<DomainResultProps> = ({
             </Text>
             <Text
               className={`text-sm font-poppins ${
-                isAvailable ? "text-green-400" : "text-red-400"
+                isAvailable ? "text-primary" : "text-red-400"
               }`}
             >
               {isAvailable ? "Available" : "Not Available"}
