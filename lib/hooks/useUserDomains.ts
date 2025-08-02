@@ -11,6 +11,7 @@ interface Domain {
   daysLeft: number;
   node: string;
   isPrimary?: boolean;
+  hasSubdomains?: boolean; // CHANGES: Added hasSubdomains property
 }
 
 const REGISTRY_ABI = parseAbi([
@@ -20,7 +21,12 @@ const REGISTRY_ABI = parseAbi([
   'event DomainRegistered(bytes32 indexed node, string label, address owner, uint64 expiry)',
 ]);
 
+const SUBDOMAIN_ABI = parseAbi([
+  'event SubdomainRegistered(bytes32 indexed node, string label, address owner, uint64 expiry)',
+]);
+
 const REGISTRY_ADDRESS = process.env.NEXT_PUBLIC_REGISTRY_ADDRESS as `0x${string}`;
+const SUBDOMAIN_ADDRESS = process.env.NEXT_PUBLIC_SUBDOMAIN_ADDRESS as `0x${string}`;
 const TLD_NODE = '0xdb6d6f1b63164285dbeecc46029ccea362278e6a391a29fb0fe4337ec0e6f5fd' as `0x${string}`;
 
 export function useUserDomains() {
@@ -39,6 +45,90 @@ export function useUserDomains() {
   const generateDomainNode = (label: string, parentNode: `0x${string}` = TLD_NODE): `0x${string}` => {
     const labelHash = keccak256(toHex(label));
     return keccak256(`0x${parentNode.slice(2)}${labelHash.slice(2)}` as `0x${string}`);
+  };
+
+  // CHANGES: Added function to check if domain has subdomains
+  const checkDomainHasSubdomains = async (domainNode: string): Promise<boolean> => {
+    if (!publicClient) return false;
+
+    try {
+      // Check both SubdomainRegistrar events and regular Registry events
+      const fromBlock = BigInt(0);
+      const toBlock = 'latest';
+
+      // Check SubdomainRegistrar events
+      const subdomainLogs = await publicClient.getLogs({
+        address: SUBDOMAIN_ADDRESS,
+        event: {
+          type: 'event',
+          name: 'SubdomainRegistered',
+          inputs: [
+            { name: 'node', type: 'bytes32', indexed: true },
+            { name: 'label', type: 'string', indexed: false },
+            { name: 'owner', type: 'address', indexed: false },
+            { name: 'expiry', type: 'uint64', indexed: false },
+          ],
+        },
+        fromBlock,
+        toBlock,
+      });
+
+      // Check Registry events for subdomains
+      const domainLogs = await publicClient.getLogs({
+        address: REGISTRY_ADDRESS,
+        event: {
+          type: 'event',
+          name: 'DomainRegistered',
+          inputs: [
+            { name: 'node', type: 'bytes32', indexed: true },
+            { name: 'label', type: 'string', indexed: false },
+            { name: 'owner', type: 'address', indexed: false },
+            { name: 'expiry', type: 'uint64', indexed: false },
+          ],
+        },
+        fromBlock,
+        toBlock,
+      });
+
+      const contract = getContract({
+        address: REGISTRY_ADDRESS,
+        abi: REGISTRY_ABI,
+        client: publicClient,
+      });
+
+      // Check subdomain events
+      for (const log of subdomainLogs) {
+        if (!log.args?.node) continue;
+        try {
+          const domainInfo = await contract.read.getDomain([log.args.node]);
+          const parentNode = domainInfo[3];
+          if (parentNode.toLowerCase() === domainNode.toLowerCase()) {
+            return true;
+          }
+        } catch (err) {
+          // Continue checking other logs
+        }
+      }
+
+      // Check domain events for subdomains
+      for (const log of domainLogs) {
+        if (!log.args?.node) continue;
+        try {
+          const domainInfo = await contract.read.getDomain([log.args.node]);
+          const parentNode = domainInfo[3];
+          if (parentNode.toLowerCase() === domainNode.toLowerCase()) {
+            return true;
+          }
+        } catch (err) {
+          // Continue checking other logs
+        }
+      }
+
+      return false;
+    } catch (err) {
+      console.error('Error checking subdomains:', err);
+      return false;
+    }
   };
 
   const fetchUserDomains = async () => {
@@ -98,12 +188,16 @@ export function useUserDomains() {
               const expiryDate = new Date(Number(expiry) * 1000);
               const daysLeft = calculateDaysLeft(expiryDate);
 
+              // CHANGES: Check if domain has subdomains
+              const hasSubdomains = await checkDomainHasSubdomains(node);
+
               userDomains.push({
                 name: `${label}.atgraphite`,
                 expiry: expiryDate,
                 daysLeft,
                 node: node,
                 isPrimary: userDomains.length === 0, // First domain is primary for now
+                hasSubdomains, // CHANGES: Added hasSubdomains property
               });
             }
           } catch (err) {

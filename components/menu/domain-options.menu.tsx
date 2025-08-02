@@ -1,21 +1,27 @@
 // components/ui/DomainMenu.tsx
 "use client";
 
-import React, { useEffect, useRef } from 'react';
-import { ArrowRightLeft, Calendar } from 'lucide-react';
-import { Text } from '../ui/text';
-import { ButtonWrapper } from '../ui/button';
+import React, { useEffect, useRef } from "react";
+import { ArrowRightLeft, Calendar, Globe, Settings } from "lucide-react";
+import { Text } from "../ui/text";
+import { ButtonWrapper } from "../ui/button";
 
 interface DomainMenuProps {
   onTransfer: () => void;
   onExtend: () => void;
+  onSubdomains?: () => void; // CHANGES: Added optional subdomains callback
+  onSubdomainSettings?: () => void;
   onClose: () => void;
+  hasSubdomains?: boolean; // CHANGES: Added prop to conditionally show subdomains option
 }
 
-export const DomainMenu: React.FC<DomainMenuProps> = ({ 
-  onTransfer, 
-  onExtend, 
-  onClose 
+export const DomainMenu: React.FC<DomainMenuProps> = ({
+  onTransfer,
+  onExtend,
+  onSubdomains,
+  onSubdomainSettings,
+  onClose,
+  hasSubdomains = false,
 }) => {
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -26,25 +32,45 @@ export const DomainMenu: React.FC<DomainMenuProps> = ({
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [onClose]);
 
   const menuItems = [
     {
       icon: ArrowRightLeft,
-      label: 'Transfer name',
+      label: "Transfer name",
       onClick: onTransfer,
     },
     {
       icon: Calendar,
-      label: 'Extend registration',
+      label: "Extend registration",
       onClick: onExtend,
     },
+    // CHANGES: Conditionally add subdomains option
+    ...(hasSubdomains && onSubdomains
+      ? [
+          {
+            icon: Globe,
+            label: "Subdomains",
+            onClick: onSubdomains,
+          },
+        ]
+      : []),
+    // CHANGES: Always show subdomain settings for domain owners
+    ...(onSubdomainSettings
+      ? [
+          {
+            icon: Settings,
+            label: "Subdomain settings",
+            onClick: onSubdomainSettings,
+          },
+        ]
+      : []),
   ];
 
   return (
-    <div 
+    <div
       ref={menuRef}
       className="absolute right-6 top-full mt-2 z-50 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl shadow-xl overflow-hidden min-w-[200px]"
     >

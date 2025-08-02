@@ -5,10 +5,13 @@ import { useState } from 'react';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { parseAbi, encodeFunctionData } from 'viem';
 
+// CHANGES: Updated ABI with correct function names from actual contract
 const REGISTRY_ABI = parseAbi([
-  'function transferFrom(address from, address to, uint256 tokenId)',
-  'function safeTransferFrom(address from, address to, uint256 tokenId)',
-  'function nodeToTokenId(bytes32 node) view returns (uint256)',
+  'function nodeToToken(bytes32 node) view returns (uint256)',
+  'function transferNode(bytes32 node, address to)',
+  'function getDomain(bytes32 node) view returns (address owner, address resolver, uint64 expiry, bytes32 parent)',
+  'function transferWithSig(bytes32 node, address from, address to, uint256 nonce, uint256 deadline, bytes calldata signature)',
+  'function nonces(address account) view returns (uint256)',
 ]);
 
 const REGISTRY_ADDRESS = process.env.NEXT_PUBLIC_REGISTRY_ADDRESS as `0x${string}`;
@@ -24,24 +27,30 @@ export function useDomainTransfer() {
     return typeof window !== 'undefined' && !!window.graphite;
   };
 
+  // CHANGES: Updated to use the correct transferNode function
   const transferWithGraphite = async (node: string, to: string) => {
     if (!address || !publicClient) {
       throw new Error('Wallet not connected');
     }
 
-    // Get token ID from node
-    const tokenId = await publicClient.readContract({
+    // Verify we own the domain
+    const domainInfo = await publicClient.readContract({
       address: REGISTRY_ADDRESS,
       abi: REGISTRY_ABI,
-      functionName: 'nodeToTokenId',
+      functionName: 'getDomain',
       args: [node as `0x${string}`],
     });
 
-    // Encode transfer function call
+    const currentOwner = domainInfo[0];
+    if (currentOwner.toLowerCase() !== address.toLowerCase()) {
+      throw new Error('You do not own this domain');
+    }
+
+    // CHANGES: Use transferNode function directly
     const callData = encodeFunctionData({
       abi: REGISTRY_ABI,
-      functionName: 'safeTransferFrom',
-      args: [address, to as `0x${string}`, tokenId],
+      functionName: 'transferNode',
+      args: [node as `0x${string}`, to as `0x${string}`],
     });
 
     // Send transaction via Graphite wallet
@@ -59,20 +68,25 @@ export function useDomainTransfer() {
       throw new Error('Wallet not connected');
     }
 
-    // Get token ID from node
-    const tokenId = await publicClient.readContract({
+    // Verify we own the domain
+    const domainInfo = await publicClient.readContract({
       address: REGISTRY_ADDRESS,
       abi: REGISTRY_ABI,
-      functionName: 'nodeToTokenId',
+      functionName: 'getDomain',
       args: [node as `0x${string}`],
     });
 
-    // Execute transfer
+    const currentOwner = domainInfo[0];
+    if (currentOwner.toLowerCase() !== address.toLowerCase()) {
+      throw new Error('You do not own this domain');
+    }
+
+    // CHANGES: Use transferNode function directly
     const txHash = await walletClient.writeContract({
       address: REGISTRY_ADDRESS,
       abi: REGISTRY_ABI,
-      functionName: 'safeTransferFrom',
-      args: [address, to as `0x${string}`, tokenId],
+      functionName: 'transferNode',
+      args: [node as `0x${string}`, to as `0x${string}`],
     });
 
     return txHash;

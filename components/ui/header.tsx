@@ -9,7 +9,7 @@ export const Header = () => {
   const { isInstalled: isGraphiteInstalled } = useGraphiteWallet();
 
   return (
-    <header className="w-full flex flex-row items-center justify-between  top-0 fixed px-20 py-7 z-20">
+    <header className="w-full flex flex-row items-center justify-between  top-0 fixed px-20 py-7 z-20 bg-transparent backdrop-blur-md">
       <GraphiteLogo />
       {isGraphiteInstalled ? <ConnectButton />: <AlternateConnectButton/>}
     </header>

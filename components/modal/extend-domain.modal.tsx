@@ -88,8 +88,8 @@ export const ExtendModal: React.FC<ExtendModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className="bg-green-500/20 p-2 rounded-lg">
-              <Calendar className="h-5 w-5 text-green-400" />
+            <div className="bg-primary/20 p-2 rounded-lg">
+              <Calendar className="h-5 w-5 text-primary" />
             </div>
             <Text className="text-xl font-semibold">Extend Registration</Text>
           </div>

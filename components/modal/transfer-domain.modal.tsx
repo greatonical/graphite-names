@@ -112,8 +112,8 @@ export const TransferModal: React.FC<TransferModalProps> = ({
 
         {/* Error Display */}
         {error && (
-          <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 mb-6">
-            <Text className="text-red-400 text-sm">{error}</Text>
+          <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 mb-6 ">
+            <Text className="text-red-400 text-sm break-words">{error}</Text>
           </div>
         )}
 
