@@ -71,7 +71,7 @@ const router = useRouter()
     >
       {routes.map((route) => (
         <button
-          onClick={()=>{router.push(route.link)}}
+          onClick={()=>{router.push(route.link); onClose()}}
           className="w-full flex flex-row items-center px-4 py-2 text-left hover:bg-neutral-700/80 transition-colors cursor-pointer"
           key={route.id}
         >

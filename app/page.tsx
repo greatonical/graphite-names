@@ -1,4 +1,4 @@
-"use client"
+"use client";
 import Home from "./home/page";
 
 export default function Index() {

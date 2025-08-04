@@ -7,6 +7,7 @@ import { Header } from "@/components/ui/header";
 import { Providers } from "@/components/providers";
 import {Toaster} from "react-hot-toast"
 import '@rainbow-me/rainbowkit/styles.css'; 
+import { Footer } from "@/components/ui/footer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -49,6 +50,7 @@ export default function RootLayout({
         <Providers>
           <Header />
           {children}
+          <Footer/>
           <Toaster/>
         </Providers>
         <Background />

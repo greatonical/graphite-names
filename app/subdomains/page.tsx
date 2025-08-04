@@ -88,7 +88,7 @@ export default function SubdomainsPage() {
   // Show empty state if user has no domains
   if (!domains || domains.length === 0) {
     return (
-      <div className="min-h-screen pt-32 px-40">
+      <div className="min-h-screen pt-32 desktop:px-40 px-4">
         <div className="max-w-4xl mx-auto">
           {/* Title */}
           <div className="text-start mb-12">
@@ -117,7 +117,7 @@ export default function SubdomainsPage() {
   }
 
   return (
-    <div className="min-h-screen pt-32 px-40">
+    <div className="min-h-screen pt-32 desktop:px-40 px-4">
       <div className="">
         {/* Title */}
         <div className="text-start mb-12">

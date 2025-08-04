@@ -19,10 +19,10 @@ export const routes = [
     title: "Subdomains",
     link: "/subdomains",
   },
-  {
-    id: 2,
-    icon: "mdi:gavel",
-    title: "Auctions",
-    link: "/auctions",
-  },
+  // {
+  //   id: 2,
+  //   icon: "mdi:gavel",
+  //   title: "Auctions",
+  //   link: "/auctions",
+  // },
 ];
