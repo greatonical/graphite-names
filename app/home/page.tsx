@@ -133,7 +133,7 @@ useEffect(() => {
           on <span className="text-primary">Graphite</span>
         </h1>
 
-        <div className="flex desktop:flex-row flex-col items-center w-full gap-x-4 mt-2">
+        <div className="flex desktop:flex-row flex-col items-center w-full gap-x-2 mt-2">
           <SearchTextInput
             className="w-full py-5"
             searchQuery={searchQuery}
@@ -150,14 +150,21 @@ useEffect(() => {
             onClick={handleSearch}
             disabled={isSearching || !searchQuery.trim()}
             className="text-black-600 mobile:mt-2 mobile:w-full"
-          /> :   <Button
+          /> :  
+          
+          <div className="mobile:w-full flex mobile:flex-col">
+            <Button
             text={"Search"}
             // onClick={handleSearch}
             disabled={true}
             className="text-black-600 mobile:mt-2 mobile:w-full disabled:opacity-60"
-          />}
+          />
+          <Text className="text-white/50 mt-2 desktop:hidden text-xs text-center">Connect wallet to continue</Text>
+            </div>}
         
         </div>
+
+        {!isConnected &&           <Text className="text-white/50 mt-2 mobile:hidden text-xs text-center">Connect wallet to continue</Text>}
 
         {/* Domain Result */}
         {domainResult && (
