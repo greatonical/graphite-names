@@ -53,7 +53,16 @@ export const DomainResult: React.FC<DomainResultProps> = ({
 
   if (error) {
     return (
-      <div className="w-full bg-red-900/20 border border-red-500 rounded-lg p-6 mt-4">
+      <div className="w-full bg-red-900/20 border border-red-500 rounded-lg p-6 mt-4"  style={{
+          // ANIMATION FIX: Disable all animations on mobile
+          WebkitAnimation: 'none',
+          animation: 'none',
+          WebkitTransition: 'none',
+          transition: 'none',
+          WebkitTransform: 'none',
+          transform: 'none',
+          willChange: 'auto'
+        }}>
         <div className="flex items-center space-x-3">
           <Icon icon="mdi:alert-circle" className="w-6 h-6 text-red-400" />
           <Text className="text-red-400 font-medium">{error}</Text>
@@ -63,8 +72,17 @@ export const DomainResult: React.FC<DomainResultProps> = ({
   }
 
   return (
-    <div className="w-full bg-black-500 backdrop-blur-sm border border-black-300 rounded-lg p-6 mt-4">
-      <div className="flex items-center justify-between">
+    <div className="w-full bg-black-500 backdrop-blur-sm border border-black-300 rounded-lg p-6 mt-4"  style={{
+          // ANIMATION FIX: Disable all animations on mobile
+          WebkitAnimation: 'none',
+          animation: 'none',
+          WebkitTransition: 'none',
+          transition: 'none',
+          WebkitTransform: 'none',
+          transform: 'none',
+          willChange: 'auto'
+        }}>
+      <div className="flex mobile:flex-col items-center mobile:items-start justify-between">
         <div className="flex items-center space-x-4">
           <div
             className={`w-3 h-3 rounded-full ${
@@ -87,7 +105,7 @@ export const DomainResult: React.FC<DomainResultProps> = ({
         </div>
 
         {isAvailable && (
-          <div className="flex flex-col gap-y-2 items-end">
+          <div className="flex flex-col gap-y-2 items-end mobile:hidden">
             {/* Duration Selector */}
             <div className="flex items-center space-x-2">
               <Text className="text-gray-400 text-sm font-poppins">
@@ -159,6 +177,68 @@ export const DomainResult: React.FC<DomainResultProps> = ({
             </view>
           </div>
         )}
+
+        {/* Mobile */}
+        {isAvailable && (
+          <div className="w-full flex flex-col">
+            <view className="flex flex-row-reverse justify-between gap-y-2 items-end desktop:hidden">
+              {/* Duration Selector */}
+              <div className="flex flex-col items-end space-y-1">
+                <Text className="text-gray-400 text-xs font-poppins">
+                  Duration:
+                </Text>
+                <select
+                  value={duration}
+                  onChange={(e) => setDuration(Number(e.target.value))}
+                  className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm font-poppins focus:border-primary focus:outline-none"
+                  disabled={isPurchasing || isConfirming}
+                >
+                  <option value={1}>1 Year</option>
+                  <option value={2}>2 Years</option>
+                  <option value={3}>3 Years</option>
+                  <option value={5}>5 Years</option>
+                  <option value={10}>10 Years</option>
+                </select>
+              </div>
+
+              {/* Price Display */}
+              <div>
+                <Text className="text-gray-400 text-xs font-poppins">
+                  {duration > 1
+                    ? `${priceInEth} @G × ${duration} years`
+                    : "Price"}
+                </Text>
+                <Text className="text-white text-xl font-bold font-poppins">
+                  {totalPriceInEth} @G
+                </Text>
+              </div>
+            </view>
+
+            <view className="flex flex-col w-full items-center space-x-4 mt-4">
+              <ButtonWrapper
+                className="flex flex-row w-full items-center justify-center bg-primary hover:bg-primary/90 text-black-600 rounded-lg px-6 py-3 gap-x-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handlePurchase}
+                disabled={isPurchasing || isConfirming}
+              >
+                {isPurchasing || isConfirming ? (
+                  <>
+                    <Icon icon="mdi:loading" className="w-4 h-4 animate-spin" />
+                    <Text className="text-black-600 text-sm font-medium font-poppins">
+                      {isPurchasing ? "Confirming..." : "Processing..."}
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <Icon icon="mdi:shopping" className="w-4 h-4" />
+                    <Text className="text-black-600 text-sm font-medium font-poppins">
+                      Buy Domain
+                    </Text>
+                  </>
+                )}
+              </ButtonWrapper>
+            </view>
+          </div>
+        )}
       </div>
 
       {/* Advanced Options */}
@@ -197,6 +277,22 @@ export const DomainResult: React.FC<DomainResultProps> = ({
           </Text>
         </div>
       )}
+
+           <style jsx>{`
+        /* Mobile-specific animation fixes for this component only */
+        @media screen and (max-width: 768px) {
+          .domain-result-container,
+          .domain-result-container * {
+            -webkit-animation: none !important;
+            animation: none !important;
+            -webkit-transition: none !important;
+            transition: none !important;
+            -webkit-transform: none !important;
+            transform: none !important;
+            will-change: auto !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };

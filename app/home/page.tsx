@@ -10,9 +10,11 @@ import { DomainResult } from "@/components/ui/domain-result";
 import { style } from "@/lib/constants/style.constants";
 import { AboutSection } from "@/components/sections/about.section";
 import { scrollToHash } from "@/lib/utils/scroll";
+import { useAccount } from "wagmi";
 
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
+  const {isConnected} = useAccount()
   const {
     domainResult,
     isSearching,
@@ -114,7 +116,7 @@ useEffect(() => {
 
   return (
     <>
-      <main className="bg-transparent w-screen h-screen desktop:px-40 px-4 flex flex-col desktop:justify-center mobile:pt-64 relative overflow-y-scroll">
+      <main className="bg-transparent w-screen h-screen desktop:px-40 px-4 flex flex-col desktop:justify-center mobile:pt-56 relative overflow-y-scroll">
         <h1 className="text-2xl font-medium text-white font-poppins">
           Find your{" "}
           <span className="text-primary font-poppins">
@@ -142,12 +144,19 @@ useEffect(() => {
               }
             }}
           />
-          <Button
+
+          {isConnected ?   <Button
             text={isSearching ? "Searching..." : "Search"}
             onClick={handleSearch}
             disabled={isSearching || !searchQuery.trim()}
             className="text-black-600 mobile:mt-2 mobile:w-full"
-          />
+          /> :   <Button
+            text={"Search"}
+            // onClick={handleSearch}
+            disabled={true}
+            className="text-black-600 mobile:mt-2 mobile:w-full disabled:opacity-60"
+          />}
+        
         </div>
 
         {/* Domain Result */}
@@ -161,7 +170,7 @@ useEffect(() => {
         )}
 
         <ButtonWrapper
-          className="flex flex-row gap-x-2 items-center absolute desktop:bottom-12 bottom-32 self-center font-medium group bg-white/5 hover:desktop:bg-primary hover:desktop:text-black-600 px-4 py-3 rounded-full"
+          className="flex flex-row gap-x-2 items-center desktop:absolute desktop:bottom-12 self-center font-medium group bg-white/5 hover:desktop:bg-primary hover:desktop:text-black-600 px-4 py-3 rounded-full mobile:mt-5"
           onClick={() => {
             scrollToHash("about");
           }}
