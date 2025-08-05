@@ -19,7 +19,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   triggerRef,
 }) => {
   const { disconnect } = useDisconnect();
-const router = useRouter()
+  const router = useRouter();
 
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -71,21 +71,17 @@ const router = useRouter()
     >
       {routes.map((route) => (
         <button
-          onClick={()=>{router.push(route.link); onClose()}}
+          onClick={() => {
+            router.push(route.link);
+            onClose();
+          }}
           className="w-full flex flex-row items-center px-4 py-2 text-left hover:bg-neutral-700/80 transition-colors cursor-pointer"
           key={route.id}
         >
-          <Icon
-            icon={route.icon}
-            className="w-4 h-4 mr-3 text-gray-400"
-          />
-          <Text className="text-white text-sm">
-            {route.title}
-          </Text>
+          <Icon icon={route.icon} className="w-4 h-4 mr-3 text-gray-400" />
+          <Text className="text-white text-sm">{route.title}</Text>
         </button>
       ))}
-
-   
 
       {/* Divider */}
       <div className="border-t border-gray-200 dark:border-gray-600 my-1"></div>

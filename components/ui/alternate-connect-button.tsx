@@ -31,7 +31,8 @@ export const AlternateConnectButton = () => {
   // If connected, show disconnect button with address
   if (isConnected) {
     return (
-      <div className="flex flex-row items-center gap-x-3">
+      <>
+       <div className="flex flex-row items-center gap-x-3 mobile:hidden">
         <ButtonWrapper
           className="flex flex-row items-center bg-primary text-black-600 rounded-lg px-4 py-2 gap-x-2"
           onClick={()=>{handleCopy(address?.toString()!)}}
@@ -56,6 +57,21 @@ export const AlternateConnectButton = () => {
           triggerRef={profileButtonRef}
         />
       </div>
+
+      <div className="w-fit desktop:hidden">
+  <ButtonWrapper
+          className="flex flex-row items-center bg-primary text-black-600 rounded-lg px-4 py-4 gap-x-2"
+          onClick={()=>{handleCopy(address?.toString()!)}}
+        //   onClick={handleDisconnect}
+        >
+          <Icon icon="tdesign:wallet-filled" />
+          <Text className="text-black-600 text-sm font-medium cursor-pointer">
+            {address?.slice(0, 6)}...{address?.slice(-4)}
+          </Text>
+        </ButtonWrapper>
+      </div>
+      </>
+     
     );
   }
 
@@ -63,7 +79,7 @@ export const AlternateConnectButton = () => {
   return (
     <div className="flex flex-col sm:flex-row items-center gap-2">
       {/* Install Graphite Button */}
-      <ButtonWrapper
+      {/* <ButtonWrapper
         className="flex flex-row items-center bg-primary text-black-600 rounded-lg px-4 py-2 gap-x-2 hover:bg-opacity-90 transition-colors"
         onClick={handleInstallGraphite}
       >
@@ -71,19 +87,28 @@ export const AlternateConnectButton = () => {
         <Text className="text-black-600 text-sm font-medium cursor-pointer">
           Install Graphite
         </Text>
-      </ButtonWrapper>
+      </ButtonWrapper> */}
 
       {/* Divider */}
       {/* <Text className="text-gray-400 text-sm">or</Text> */}
 
       {/* Use Other Wallets Button */}
-      <ButtonWrapper
+      {/* <ButtonWrapper
         className="flex flex-row items-center border border-primary text-primary bg-transparent hover:bg-primary hover:text-black-600 rounded-lg px-4 py-2 gap-x-2 transition-colors"
         onClick={handleUseOtherWallets}
       >
         <Icon icon="tdesign:wallet-filled" />
         <p className="text-sm font-medium cursor-pointer font-poppins">
           Use Other Wallets
+        </p>
+      </ButtonWrapper> */}
+      <ButtonWrapper
+             className="flex flex-row items-center bg-primary text-black-600 rounded-lg px-4 py-4 gap-x-2 hover:bg-opacity-90 transition-colors"
+        onClick={handleUseOtherWallets}
+      >
+        <Icon icon="tdesign:wallet-filled" />
+        <p className="text-sm font-medium cursor-pointer font-poppins">
+          Connect Wallet
         </p>
       </ButtonWrapper>
     </div>

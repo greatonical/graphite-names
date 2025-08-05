@@ -22,6 +22,7 @@ export default function Home() {
     isConfirming,
     isSuccess,
     purchaseError,
+    txHash
   } = useDomainAvailability();
 
   const handleSearch = () => {
@@ -30,32 +31,62 @@ export default function Home() {
     }
   };
 
-  const handlePurchase = async (
-    domain: string,
-    totalPrice: bigint,
-    duration: number,
-    resolver?: `0x${string}`
-  ) => {
-    try {
-      console.log("Home: Starting purchase...", {
-        domain,
-        totalPrice,
-        duration,
-        resolver,
-      });
-      await purchaseDomain(domain, totalPrice, duration, resolver).then(() => {
-        console.log("Purchase successful!");
-        toast.success("Purchase successful!.", {
-          style: style.toast,
-        });
-      });
-      console.log("Home: Purchase initiated successfully");
-    } catch (error) {
-      console.error("Purchase failed:", error);
-      toast.error("Purchase failed. Please try again.", { style: style.toast });
-      // You can add toast notifications here
-    }
-  };
+ const handlePurchase = async (
+  domain: string,
+  totalPrice: bigint,
+  duration: number,
+  resolver?: `0x${string}`
+) => {
+  const purchaseId = `purchase-${domain}-${Date.now()}`; // Unique ID for this purchase
+  
+  try {
+    console.log("Home: Starting purchase...", {
+      domain,
+      totalPrice,
+      duration,
+      resolver,
+    });
+    
+    // Show loading toast
+    toast.loading("Submitting transaction...", { 
+      id: purchaseId,
+      style: style.toast 
+    });
+    
+    const result = await purchaseDomain(domain, totalPrice, duration, resolver);
+    console.log("Home: Purchase initiated successfully", result);
+    
+    // Update to success toast
+    toast.success("🎉 Transaction submitted successfully!", { 
+      id: purchaseId, // Same ID replaces the loading toast
+      style: style.toast,
+      duration: 4000
+    });
+    
+  } catch (error: any) {
+    console.error("Purchase failed:", error);
+    
+    const errorMessage = error?.message || "Purchase failed. Please try again.";
+    
+    // Update to error toast
+    toast.error(errorMessage, { 
+      id: purchaseId, // Same ID replaces the loading toast
+      style: style.toast 
+    });
+  }
+};
+
+// Optional: Add useEffect to show final confirmation
+useEffect(() => {
+  if (isSuccess && txHash) {
+    const confirmId = `confirm-${txHash}`;
+    toast.success("✅ Domain purchased and confirmed!", { 
+      id: confirmId,
+      style: style.toast,
+      duration: 6000 
+    });
+  }
+}, [isSuccess, txHash]);
 
   // Handle successful purchase
   useEffect(() => {
@@ -69,6 +100,7 @@ export default function Home() {
       }
     }
   }, [isSuccess, domainResult, checkDomainAvailability]);
+
 
   // Handle purchase errors
   useEffect(() => {

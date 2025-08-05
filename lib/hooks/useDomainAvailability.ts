@@ -1,7 +1,7 @@
 // lib/hooks/useDomainAvailability.ts - Fixed for Balance Issue
 import { useState, useCallback } from 'react';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
-import { formatEther, keccak256, toBytes, concat, encodeFunctionData, parseAbi } from 'viem';
+import { formatEther, keccak256, toBytes, concat, encodeFunctionData, parseAbi, parseEther } from 'viem';
 
 // Your deployed contract addresses
 const REGISTRY_ADDRESS = '0xC3682c6be995e239D83fAa3a30037390c1c444E5' as `0x${string}`;
@@ -98,7 +98,57 @@ export const useDomainAvailability = () => {
     return connector?.id === 'graphite' && typeof window !== 'undefined' && !!window.graphite;
   }, [connector]);
 
-  // Purchase with Graphite wallet directly - FIXED BALANCE CHECK
+  // Helper function to parse Graphite wallet balance
+  const parseGraphiteBalance = useCallback((balance: any): bigint => {
+    console.log('🔍 Parsing balance:', balance, typeof balance);
+    
+    if (typeof balance === 'string') {
+      // Handle hex string
+      if (balance.startsWith('0x')) {
+        return BigInt(balance);
+      }
+      // Handle decimal string
+      if (balance.includes('.')) {
+        return parseEther(balance);
+      }
+      // Handle wei string
+      return BigInt(balance);
+    }
+    
+    if (typeof balance === 'number') {
+      // Assume it's in Ether if it's a reasonable number
+      if (balance < 1000) {
+        return parseEther(balance.toString());
+      }
+      // Otherwise assume it's in wei
+      return BigInt(Math.floor(balance));
+    }
+    
+    if (typeof balance === 'object' && balance !== null) {
+      // Handle various object formats
+      const balObj = balance as any;
+      
+      if (balObj.value !== undefined) {
+        return typeof balObj.value === 'string' ? BigInt(balObj.value) : BigInt(Math.floor(balObj.value));
+      }
+      
+      if (balObj.wei !== undefined) {
+        return typeof balObj.wei === 'string' ? BigInt(balObj.wei) : BigInt(Math.floor(balObj.wei));
+      }
+      
+      if (balObj.balance !== undefined) {
+        return typeof balObj.balance === 'string' ? BigInt(balObj.balance) : BigInt(Math.floor(balObj.balance));
+      }
+      
+      if (balObj.ether !== undefined) {
+        return parseEther(balObj.ether.toString());
+      }
+    }
+    
+    throw new Error(`Unsupported balance format: ${typeof balance}`);
+  }, []);
+
+  // Purchase with Graphite wallet directly - MAJOR FIXES
   const purchaseWithGraphite = useCallback(async (
     domain: string,
     totalPrice: bigint,
@@ -136,63 +186,45 @@ export const useDomainAvailability = () => {
         await window.graphite.changeActiveNetwork('testnet');
       }
 
-      // 3. Get current address and balance - FIXED BALANCE HANDLING
+      // 3. Get current address
       const graphiteAddress = await window.graphite.getAddress();
       console.log('💰 Graphite address:', graphiteAddress);
       
-      // CHANGES: Skip balance check or make it more flexible
+      // 4. IMPROVED BALANCE CHECK
       try {
-        const balance = await window.graphite.getBalance();
-        console.log('💰 Raw balance response:', balance, typeof balance);
+        const rawBalance = await window.graphite.getBalance();
+        console.log('💰 Raw balance from wallet:', rawBalance);
         
-        // CHANGES: Try to parse balance but don't fail if it's wrong
-        let balanceWei: bigint;
-        try {
-          if (typeof balance === 'string') {
-            balanceWei = BigInt(balance);
-          } else if (typeof balance === 'number') {
-            balanceWei = BigInt(Math.floor(balance));
-          } else if (typeof balance === 'object' && balance !== null) {
-            // Handle object responses
-            const balObj = balance as any;
-            if (balObj.value) {
-              balanceWei = BigInt(balObj.value);
-            } else if (balObj.wei) {
-              balanceWei = BigInt(balObj.wei);
-            } else if (balObj.balance) {
-              balanceWei = BigInt(balObj.balance);
-            } else {
-              throw new Error('Unknown balance object format');
-            }
-          } else {
-            throw new Error('Unknown balance format');
-          }
-          
-          console.log('💰 Parsed balance:', balanceWei.toString(), 'wei');
-          console.log('💰 Required:', totalPrice.toString(), 'wei');
-          console.log('💰 Balance in @G:', formatEther(balanceWei));
-          console.log('💰 Required in @G:', formatEther(totalPrice));
-          
-          // CHANGES: Add buffer for gas costs
-          const gasBuffer = BigInt('100000000000000000'); // 0.1 @G buffer for gas
-          const requiredWithBuffer = totalPrice + gasBuffer;
-          
-          if (balanceWei < requiredWithBuffer) {
-            console.warn('⚠️ Balance might be insufficient (including gas buffer)');
-            console.log('💰 Available:', formatEther(balanceWei), '@G');
-            console.log('💰 Required (with gas):', formatEther(requiredWithBuffer), '@G');
-            // Don't throw error, let the transaction fail naturally
-          }
-        } catch (balanceParseError) {
-          console.warn('⚠️ Could not parse balance, skipping balance check:', balanceParseError);
-          // Continue without balance check
+        const balanceWei = parseGraphiteBalance(rawBalance);
+        console.log('💰 Parsed balance:', balanceWei.toString(), 'wei');
+        console.log('💰 Balance in @G:', formatEther(balanceWei));
+        console.log('💰 Required price:', formatEther(totalPrice), '@G');
+        
+        // More generous gas estimation - increase buffer
+        const gasBuffer = parseEther('0.1'); // 0.1 @G buffer for gas
+        const requiredWithBuffer = totalPrice + gasBuffer;
+        
+        console.log('💰 Required with gas buffer:', formatEther(requiredWithBuffer), '@G');
+        
+        if (balanceWei < requiredWithBuffer) {
+          throw new Error(
+            `Insufficient @G balance. You have ${formatEther(balanceWei)} @G but need ${formatEther(requiredWithBuffer)} @G (including gas)`
+          );
         }
+        
+        console.log('✅ Balance check passed');
+        
       } catch (balanceError) {
-        console.warn('⚠️ Could not get balance, skipping balance check:', balanceError);
-        // Continue without balance check - let wallet handle it
+        console.error('❌ Balance check failed:', balanceError);
+        // If it's our custom insufficient funds error, re-throw it
+        if (balanceError instanceof Error && balanceError.message.includes('Insufficient @G balance')) {
+          throw balanceError;
+        }
+        // For other balance parsing errors, show a warning but continue
+        console.warn('⚠️ Could not verify balance, proceeding with transaction...');
       }
 
-      // 4. Prepare transaction data
+      // 5. Prepare transaction data
       const durationInSeconds = BigInt(durationYears * 365 * 24 * 60 * 60);
       const resolver = resolverAddress || RESOLVER_ADDRESS;
       
@@ -203,25 +235,63 @@ export const useDomainAvailability = () => {
         args: [domain, resolver, durationInSeconds],
       });
       
+      // IMPROVED GAS ESTIMATION - try multiple gas values
+      const gasOptions = [
+        '0x2DC6C0', // ~3M gas (your current value)
+        '0x3D0900', // ~4M gas  
+        '0x4C4B40', // ~5M gas
+      ];
+      
       const txParams = {
         to: REGISTRY_ADDRESS,
         value: `0x${totalPrice.toString(16)}`,
         data: callData,
-        gas: '0x2DC6C0' // Your increased gas limit
+        gas: gasOptions[1], // Start with 4M gas
       };
 
       console.log('📦 Final transaction params:', {
         to: txParams.to,
         value: txParams.value,
+        valueInEth: formatEther(totalPrice),
         gas: txParams.gas,
+        gasDecimal: parseInt(txParams.gas, 16),
         dataLength: callData.length,
         decodedArgs: [domain, resolver, durationInSeconds.toString()],
-        priceInEth: formatEther(totalPrice)
       });
 
-      // 5. Send transaction using Graphite's sendTx method
+      // 6. Send transaction using Graphite's sendTx method
       console.log('📤 Sending transaction to Graphite wallet...');
-      const txHash = await window.graphite.sendTx(txParams);
+      
+      let txHash: string;
+      let lastError: any;
+      
+      // Try different gas values if the first one fails
+      for (let i = 0; i < gasOptions.length; i++) {
+        try {
+          const currentTxParams = { ...txParams, gas: gasOptions[i] };
+          console.log(`🔄 Attempting transaction with gas: ${gasOptions[i]} (${parseInt(gasOptions[i], 16)} decimal)`);
+          
+          txHash = await window.graphite.sendTx(currentTxParams);
+          console.log('✅ Transaction successful with gas:', gasOptions[i]);
+          break;
+          
+        } catch (gasError: any) {
+          console.warn(`⚠️ Transaction failed with gas ${gasOptions[i]}:`, gasError);
+          lastError = gasError;
+          
+          // If this was the last attempt, throw the error
+          if (i === gasOptions.length - 1) {
+            throw gasError;
+          }
+          
+          // Wait a bit before trying again
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+      
+      if (!txHash!) {
+        throw lastError || new Error('All gas attempts failed');
+      }
       
       console.log('✅ Graphite transaction sent:', txHash);
       
@@ -248,19 +318,24 @@ export const useDomainAvailability = () => {
         data: error?.data
       });
       
-      // CHANGES: Better error messages
+      // IMPROVED ERROR MESSAGES
       let errorMessage = 'Purchase failed. Please try again.';
       
       if (error?.message) {
         const msg = error.message.toLowerCase();
-        if (msg.includes('insufficient funds') || msg.includes('insufficient balance')) {
+        if (msg.includes('insufficient') && msg.includes('@g')) {
+          // Our custom balance error message
+          errorMessage = error.message;
+        } else if (msg.includes('insufficient funds') || msg.includes('insufficient balance')) {
           errorMessage = 'Insufficient @G balance. Please check your wallet balance and try again.';
-        } else if (msg.includes('user rejected') || msg.includes('denied')) {
+        } else if (msg.includes('user rejected') || msg.includes('denied') || msg.includes('cancel')) {
           errorMessage = 'Transaction cancelled by user';
         } else if (msg.includes('gas')) {
-          errorMessage = 'Gas estimation failed. Please try again.';
+          errorMessage = 'Gas estimation failed. The transaction may require more gas than available.';
         } else if (msg.includes('nonce')) {
           errorMessage = 'Nonce error. Please try again.';
+        } else if (msg.includes('network') || msg.includes('connection')) {
+          errorMessage = 'Network connection error. Please check your connection and try again.';
         } else {
           errorMessage = error.message;
         }
@@ -276,7 +351,7 @@ export const useDomainAvailability = () => {
       
       throw finalError;
     }
-  }, [refetchAvailability, refetchPrice]);
+  }, [refetchAvailability, refetchPrice, parseGraphiteBalance]);
 
   // Standard wagmi purchase (for MetaMask and other wallets)
   const purchaseWithWagmi = useCallback(async (
@@ -299,7 +374,7 @@ export const useDomainAvailability = () => {
     const durationInSeconds = BigInt(durationYears * 365 * 24 * 60 * 60);
     const resolver = resolverAddress || RESOLVER_ADDRESS;
     
-    const result = await writeContract({
+    const result = writeContract({
       address: REGISTRY_ADDRESS,
       abi: REGISTRY_ABI,
       functionName: 'buyFixedPrice',

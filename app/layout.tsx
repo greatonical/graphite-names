@@ -8,6 +8,7 @@ import { Providers } from "@/components/providers";
 import {Toaster} from "react-hot-toast"
 import '@rainbow-me/rainbowkit/styles.css'; 
 import { Footer } from "@/components/ui/footer";
+import { NetworkGuard } from "@/components/miscellaneous/network-guard";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -48,10 +49,13 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${poppins.variable} antialiased bg-gradient-to-r from-gradient-start to-gradient-end flex flex-col`}
       >
         <Providers>
-          <Header />
+          <NetworkGuard>
+   <Header />
           {children}
           <Footer/>
           <Toaster/>
+          </NetworkGuard>
+       
         </Providers>
         <Background />
       </body>

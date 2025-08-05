@@ -26,6 +26,10 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
- .mobile-bounce {
-    animation: bounce-mobile 2s ease infinite;
-  }
+.mobile-bounce {
+  animation: bounce-mobile 2s ease infinite;
+}
+
+.no-scroll {
+  overflow: hidden;
+}
