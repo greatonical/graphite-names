@@ -25,13 +25,16 @@ export default function SubdomainsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
 
+  // CHANGED: Updated to use the corrected hook interface
   const {
-    checkAvailability,
+    subdomainResult,
+    isSearching,
+    checkSubdomainAvailability,
     purchaseSubdomain,
-    availability,
-    price,
-    loading: subdomainLoading,
-    error,
+    isPurchasing,
+    isConfirming,
+    isSuccess,
+    purchaseError,
   } = useSubdomainAvailability();
 
   // Set first domain as default when domains load
@@ -41,16 +44,27 @@ export default function SubdomainsPage() {
     }
   }, [domains, selectedDomain]);
 
-  // Check availability when both inputs are filled
-  useEffect(() => {
-    if (selectedDomain && subdomainName.trim()) {
-      const fullSubdomain = `${subdomainName.trim()}.${selectedDomain.name}`;
-      setSearchQuery(fullSubdomain);
-      checkAvailability(subdomainName.trim(), selectedDomain.node);
-    } else {
-      setSearchQuery("");
-    }
-  }, [selectedDomain, subdomainName, checkAvailability]);
+  // CHANGED: Updated to use the corrected function signature
+  // useEffect(() => {
+  //   if (selectedDomain && subdomainName.trim()) {
+  //     const cleanSubdomain = subdomainName.trim().toLowerCase();
+  //     const cleanParentDomain = selectedDomain.name.replace('.atgraphite', '');
+  //     const fullSubdomain = `${cleanSubdomain}.${cleanParentDomain}.atgraphite`;
+      
+  //     setSearchQuery(fullSubdomain);
+      
+  //     console.log('🔍 Checking subdomain availability:', {
+  //       subdomain: cleanSubdomain,
+  //       parentDomain: cleanParentDomain,
+  //       fullName: fullSubdomain
+  //     });
+      
+  //     // CHANGED: Pass subdomain and parent domain name (not node)
+  //     checkSubdomainAvailability(cleanSubdomain, cleanParentDomain);
+  //   } else {
+  //     setSearchQuery("");
+  //   }
+  // }, [selectedDomain, subdomainName, checkSubdomainAvailability]);
 
   const handleDomainSelect = (domain: Domain) => {
     setSelectedDomain(domain);
@@ -73,6 +87,29 @@ export default function SubdomainsPage() {
     );
   };
 
+  // CHANGED: Updated purchase handler to match new hook
+  const handlePurchase = async (
+    subdomain: string,
+    parentDomain: string,
+    totalPrice: bigint,
+    duration: number
+  ) => {
+    try {
+      console.log("SubdomainsPage: Starting subdomain purchase...", {
+        subdomain,
+        parentDomain,
+        totalPrice: totalPrice.toString(),
+        duration,
+      });
+      
+      await purchaseSubdomain(subdomain, parentDomain, totalPrice, duration);
+      console.log("SubdomainsPage: Purchase initiated successfully");
+    } catch (error) {
+      console.error("Subdomain purchase failed:", error);
+      // Error is handled by the hook itself
+    }
+  };
+
   if (domainsLoading) {
     return (
       <div className="min-h-screen pt-32 px-40">
@@ -88,8 +125,8 @@ export default function SubdomainsPage() {
   // Show empty state if user has no domains
   if (!domains || domains.length === 0) {
     return (
-      <div className="min-h-screen pt-32 desktop:px-40 px-4">
-        <div className="max-w-4xl mx-auto">
+      <div className="min-h-screen pt-32 desktop:px-20 px-4">
+        <div className="max-w-6xl mx-auto">
           {/* Title */}
           <div className="text-start mb-12">
             <Text className="text-4xl md:text-5xl font-bold mb-4">
@@ -140,7 +177,14 @@ export default function SubdomainsPage() {
               <div className="relative">
                 <button
                   onClick={() => setShowDropdown(!showDropdown)}
-                  className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-left text-white focus:border-primary focus:outline-none transition-colors flex items-center justify-between"
+                  // CHANGED: Disable dropdown during search or purchase
+                  disabled={isSearching || isPurchasing || isConfirming}
+                  className={`
+                    w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 
+                    text-left text-white focus:border-primary focus:outline-none 
+                    transition-colors flex items-center justify-between
+                    ${(isSearching || isPurchasing || isConfirming) ? 'opacity-50 cursor-not-allowed' : ''}
+                  `}
                 >
                   <span>
                     {selectedDomain
@@ -194,11 +238,18 @@ export default function SubdomainsPage() {
                   value={subdomainName}
                   onChange={(e) => handleSubdomainChange(e.target.value)}
                   placeholder="Enter subdomain name"
-                  className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-white/40 focus:border-green-900 focus:outline-none transition-colors"
+                  // CHANGED: Disable input during search or purchase
+                  disabled={isSearching || isPurchasing || isConfirming}
+                  className={`
+                    w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 
+                    text-white placeholder-white/40 focus:border-green-900 focus:outline-none 
+                    transition-colors
+                    ${(isSearching || isPurchasing || isConfirming) ? 'opacity-50 cursor-not-allowed' : ''}
+                  `}
                   maxLength={32}
                 />
                 {selectedDomain && (
-                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/40">
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/40 mobile:hidden">
                     .{selectedDomain.name}
                   </div>
                 )}
@@ -214,11 +265,11 @@ export default function SubdomainsPage() {
 
           {/* Search Preview */}
           {searchQuery && (
-            <div className="bg-white/5 rounded-xl p-4 mb-4">
+            <div className="bg-white/5 flex flex-col relative rounded-xl p-4 mb-4">
               <Text className="text-white/60 text-sm mb-1">
                 Creating subdomain:
               </Text>
-              <Text className="text-xl font-medium text-primary">
+              <Text className="text-xl font-medium text-primary break-words">
                 {searchQuery}
               </Text>
             </div>
@@ -226,43 +277,54 @@ export default function SubdomainsPage() {
 
           {/* Search Button */}
           <Button
-            onClick={() =>
-              selectedDomain &&
-              subdomainName.trim() &&
-              checkAvailability(subdomainName.trim(), selectedDomain.node)
-            }
+            onClick={() => {
+              if (selectedDomain && subdomainName.trim()) {
+                const cleanSubdomain = subdomainName.trim().toLowerCase();
+                const cleanParentDomain = selectedDomain.name.replace('.atgraphite', '');
+                checkSubdomainAvailability(cleanSubdomain, cleanParentDomain);
+              }
+            }}
             disabled={
               !selectedDomain ||
               !subdomainName.trim() ||
               !isValidSubdomain(subdomainName) ||
-              subdomainLoading
+              isSearching ||
+              isPurchasing ||
+              isConfirming
             }
-            className={`w-full py-4 rounded-xl font-semibold transition-all ${
-              selectedDomain &&
-              subdomainName.trim() &&
-              isValidSubdomain(subdomainName) &&
-              !subdomainLoading
+            className={`
+              w-full py-4 rounded-xl font-semibold transition-all
+              ${selectedDomain &&
+                subdomainName.trim() &&
+                isValidSubdomain(subdomainName) &&
+                !isSearching &&
+                !isPurchasing &&
+                !isConfirming
                 ? "bg-primary hover:bg-primary/80 text-black"
                 : "bg-white/10 text-white/40 cursor-not-allowed"
-            }`}
+              }
+            `}
           >
             <div className="flex items-center justify-center gap-2">
               <Search className="h-5 w-5" />
-              {subdomainLoading ? "Checking..." : "Check Availability"}
+              {/* CHANGED: Better loading state text */}
+              {isSearching ? "Checking..." : 
+               isPurchasing ? "Purchasing..." :
+               isConfirming ? "Confirming..." : 
+               "Check Availability"}
             </div>
           </Button>
         </div>
 
         {/* Results */}
-        {searchQuery && (
+        {/* CHANGED: Updated to use subdomainResult from the hook */}
+        {subdomainResult && selectedDomain && (
           <SubdomainResult
-            subdomain={subdomainName}
-            parentDomain={selectedDomain!}
-            availability={availability}
-            price={price}
-            onPurchase={purchaseSubdomain}
-            loading={subdomainLoading}
-            error={error}
+            // CHANGED: Pass the full subdomainResult object
+            subdomainResult={subdomainResult}
+            onPurchase={handlePurchase}
+            loading={isPurchasing || isConfirming}
+            error={purchaseError?.message || subdomainResult.error}
           />
         )}
       </div>

@@ -1,4 +1,4 @@
-// components/ui/ExtendModal.tsx
+// components/modal/extend-domain.modal.tsx
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -73,10 +73,13 @@ export const ExtendModal: React.FC<ExtendModalProps> = ({
     try {
       const domainLabel = domain.name.replace('.atgraphite', '');
       await extendDomain(domainLabel, selectedDuration.seconds, price);
+      
+      // CHANGED: Call onSuccess first to refresh domain list
       onSuccess();
       onClose();
     } catch (err) {
       console.error('Extension failed:', err);
+      // CHANGED: Error is now handled by the hook itself via setError
     }
   };
 
@@ -95,6 +98,8 @@ export const ExtendModal: React.FC<ExtendModalProps> = ({
           </div>
           <ButtonWrapper
             onClick={onClose}
+            // CHANGED: Disable close button during loading to prevent issues
+            disabled={loading || priceLoading}
             className="p-2 hover:bg-white/10 rounded-lg transition-colors"
           >
             <X className="h-5 w-5 text-white/60" />
@@ -127,11 +132,16 @@ export const ExtendModal: React.FC<ExtendModalProps> = ({
               <ButtonWrapper
                 key={option.value}
                 onClick={() => setSelectedDuration(option)}
-                className={`p-3 rounded-xl border transition-colors ${
-                  selectedDuration.value === option.value
+                // CHANGED: Disable duration selection during loading
+                disabled={loading || priceLoading}
+                className={`
+                  p-3 rounded-xl border transition-colors
+                  ${selectedDuration.value === option.value
                     ? 'border-primary bg-primary/10 text-primary'
                     : 'border-white/20 bg-white/5 text-white hover:bg-white/10'
-                }`}
+                  }
+                  ${(loading || priceLoading) ? 'opacity-50 cursor-not-allowed' : ''}
+                `}
               >
                 <Text className="text-sm font-medium">{option.label}</Text>
               </ButtonWrapper>
@@ -174,7 +184,10 @@ export const ExtendModal: React.FC<ExtendModalProps> = ({
         {/* Error Display */}
         {error && (
           <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 mb-6">
-            <Text className="text-red-400 text-sm">{error}</Text>
+            {/* CHANGED: Better error text formatting for long messages */}
+            <Text className="text-red-400 text-sm break-words leading-relaxed">
+              {error}
+            </Text>
           </div>
         )}
 
@@ -182,22 +195,41 @@ export const ExtendModal: React.FC<ExtendModalProps> = ({
         <div className="flex gap-3">
           <ButtonWrapper
             onClick={onClose}
-            className="flex-1 bg-white/10 hover:bg-white/20 text-white py-3 px-4 rounded-xl transition-colors"
+            // CHANGED: Disable cancel during loading to prevent issues
+            disabled={loading || priceLoading}
+            className={`
+              flex-1 bg-white/10 hover:bg-white/20 text-white py-3 px-4 
+              rounded-xl transition-colors
+              ${(loading || priceLoading) ? 'opacity-50 cursor-not-allowed' : ''}
+            `}
           >
             <Text className="font-medium">Cancel</Text>
           </ButtonWrapper>
           <Button
             onClick={handleExtend}
             disabled={!canExtend}
-            className={`flex-1 py-3 px-4 rounded-xl transition-colors ${
-              canExtend
+            className={`
+              flex-1 py-3 px-4 rounded-xl transition-colors font-medium
+              ${canExtend
                 ? 'bg-primary hover:bg-primary/80 text-black'
                 : 'bg-white/5 text-white/40 cursor-not-allowed'
-            }`}
+              }
+            `}
           >
+            {/* CHANGED: Better loading state text */}
             {loading ? 'Extending...' : `Extend for ${selectedDuration.label}`}
           </Button>
         </div>
+
+        {/* CHANGED: Added loading indicator for better UX */}
+        {(loading || priceLoading) && (
+          <div className="mt-4 flex items-center justify-center gap-2 text-white/60">
+            <div className="w-4 h-4 border-2 border-white/20 border-t-primary rounded-full animate-spin"></div>
+            <Text className="text-sm">
+              {priceLoading ? 'Loading price...' : 'Processing extension...'}
+            </Text>
+          </div>
+        )}
       </div>
     </div>
   );

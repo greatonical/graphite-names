@@ -18,6 +18,10 @@ const nextConfig: NextConfig = {
     webpackBuildWorker: true, // isolate big compiles in a worker :contentReference[oaicite:2]{index=2}
     webpackMemoryOptimizations: true, // shrink caches + more aggressive GC :contentReference[oaicite:3]{index=3}
   },
+
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production'
+  }
 };
 
 export default nextConfig;

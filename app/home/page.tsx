@@ -57,7 +57,7 @@ export default function Home() {
     console.log("Home: Purchase initiated successfully", result);
     
     // Update to success toast
-    toast.success("🎉 Transaction submitted successfully!", { 
+    toast.success("Transaction submitted successfully!", { 
       id: purchaseId, // Same ID replaces the loading toast
       style: style.toast,
       duration: 4000
@@ -80,7 +80,7 @@ export default function Home() {
 useEffect(() => {
   if (isSuccess && txHash) {
     const confirmId = `confirm-${txHash}`;
-    toast.success("✅ Domain purchased and confirmed!", { 
+    toast.success("🎉 Domain purchased and confirmed!", { 
       id: confirmId,
       style: style.toast,
       duration: 6000 
@@ -114,7 +114,7 @@ useEffect(() => {
 
   return (
     <>
-      <main className="bg-transparent w-screen h-screen desktop:px-40 px-4 flex flex-col justify-center relative overflow-y-scroll">
+      <main className="bg-transparent w-screen h-screen desktop:px-40 px-4 flex flex-col desktop:justify-center mobile:pt-64 relative overflow-y-scroll">
         <h1 className="text-2xl font-medium text-white font-poppins">
           Find your{" "}
           <span className="text-primary font-poppins">
@@ -161,7 +161,7 @@ useEffect(() => {
         )}
 
         <ButtonWrapper
-          className="flex flex-row gap-x-2 items-center absolute bottom-12 self-center font-medium group bg-white/5 hover:desktop:bg-primary hover:desktop:text-black-600 px-4 py-3 rounded-full"
+          className="flex flex-row gap-x-2 items-center absolute desktop:bottom-12 bottom-32 self-center font-medium group bg-white/5 hover:desktop:bg-primary hover:desktop:text-black-600 px-4 py-3 rounded-full"
           onClick={() => {
             scrollToHash("about");
           }}

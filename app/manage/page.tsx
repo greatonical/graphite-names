@@ -17,6 +17,7 @@ import { DomainMenu } from "@/components/menu/domain-options.menu";
 import { TransferModal } from "@/components/modal/transfer-domain.modal";
 import { ExtendModal } from "@/components/modal/extend-domain.modal";
 import { SubdomainPricing } from "@/components/modal/subdomain-pricing.modal";
+import { useRouter } from "next/navigation";
 
 interface Domain {
   name: string;
@@ -36,6 +37,8 @@ export default function ManagePage() {
   const [expandedSubdomains, setExpandedSubdomains] = useState<string | null>(
     null
   );
+
+  const router = useRouter()
 
   const handleTransfer = (domain: Domain) => {
     setSelectedDomain(domain);
@@ -102,7 +105,7 @@ export default function ManagePage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-12">
           <Text className="text-4xl font-bold">My Graphite Names</Text>
-          <ButtonWrapper className="bg-white/10 hover:desktop:bg-primary hover:desktop:text-black-500 rounded-full p-3 transition-colors duration-500">
+          <ButtonWrapper className="bg-white/10 hover:desktop:bg-primary text-white hover:desktop:text-black-500 rounded-full p-3 transition-colors duration-500" onClick={()=>{router.push("/")}}>
             <Plus className="h-6 w-6" />
           </ButtonWrapper>
         </div>

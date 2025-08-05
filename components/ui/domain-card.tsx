@@ -76,12 +76,13 @@ export const DomainCard: React.FC<DomainCardProps> = ({
       <div className="flex items-center justify-between">
         {/* Domain Info */}
         <div className="flex-1">
-          <div className="flex items-center gap-y-4 gap-x-3 mb-2">
+          <div className="flex desktop:flex-row mobile:flex-col desktop:items-center mobile:items-start gap-y-4 gap-x-3 mb-2">
             <Text className="text-xl font-semibold text-white">
               {domain.name}
             </Text>
 
-            {/* Status Badge */}
+<div className="flex flex-row gap-x-3">
+ {/* Status Badge */}
             <span
               className={`px-3 py-1 rounded-full text-xs font-medium font-poppins ${getStatusColor(
                 domain.daysLeft
@@ -96,6 +97,8 @@ export const DomainCard: React.FC<DomainCardProps> = ({
                 Primary
               </span>
             )}
+</div>
+           
           </div>
 
           <Text className="text-white/60 text-sm">

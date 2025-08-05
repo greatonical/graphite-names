@@ -6,20 +6,24 @@ import { Check, X, AlertCircle, Calendar } from 'lucide-react';
 import { Text } from './text';
 import { Button } from './button';
 
-interface Domain {
-  name: string;
-  expiry: Date;
-  daysLeft: number;
-  node: string;
-  isPrimary?: boolean;
+// CHANGED: Updated to match the SubdomainResult interface from the hook
+interface SubdomainResult {
+  subdomain: string;
+  parentDomain: string;
+  fullName: string;
+  isAvailable: boolean;
+  price: bigint;
+  priceInEth: string;
+  isLoading: boolean;
+  error: string | null;
+  subdomainNode?: `0x${string}`;
+  parentNode?: `0x${string}`;
 }
 
+// CHANGED: Updated component props to match new interface
 interface SubdomainResultProps {
-  subdomain: string;
-  parentDomain: Domain;
-  availability: boolean | null;
-  price: bigint | null;
-  onPurchase: (label: string, parentDomain: Domain, duration: number) => Promise<string>;
+  subdomainResult: SubdomainResult;
+  onPurchase: (subdomain: string, parentDomain: string, totalPrice: bigint, duration: number) => Promise<void>;
   loading: boolean;
   error: string | null;
 }
@@ -33,10 +37,7 @@ const DURATION_OPTIONS = [
 ];
 
 export const SubdomainResult: React.FC<SubdomainResultProps> = ({
-  subdomain,
-  parentDomain,
-  availability,
-  price,
+  subdomainResult,
   onPurchase,
   loading,
   error
@@ -51,8 +52,8 @@ export const SubdomainResult: React.FC<SubdomainResultProps> = ({
   };
 
   const getTotalPrice = () => {
-    if (!price) return BigInt(0);
-    return price * BigInt(selectedDuration.value);
+    if (!subdomainResult.price) return BigInt(0);
+    return subdomainResult.price * BigInt(selectedDuration.value);
   };
 
   const calculateExpiry = () => {
@@ -61,20 +62,39 @@ export const SubdomainResult: React.FC<SubdomainResultProps> = ({
     return expiry;
   };
 
+  // CHANGED: Updated to match new function signature
   const handlePurchase = async () => {
-    if (!availability || purchasing) return;
+    if (!subdomainResult.isAvailable || purchasing || loading) return;
 
     setPurchasing(true);
     try {
-      await onPurchase(subdomain, parentDomain, selectedDuration.value);
+      const totalPrice = getTotalPrice();
+      console.log('🛒 SubdomainResult: Starting purchase...', {
+        subdomain: subdomainResult.subdomain,
+        parentDomain: subdomainResult.parentDomain,
+        totalPrice: totalPrice.toString(),
+        duration: selectedDuration.value
+      });
+
+      // CHANGED: Pass the correct parameters
+      await onPurchase(
+        subdomainResult.subdomain,
+        subdomainResult.parentDomain,
+        totalPrice,
+        selectedDuration.value
+      );
+      
+      console.log('🛒 SubdomainResult: Purchase completed');
     } catch (err) {
-      console.error('Purchase failed:', err);
+      console.error('🛒 SubdomainResult: Purchase failed:', err);
+      // Error handling is done by the parent component/hook
     } finally {
       setPurchasing(false);
     }
   };
 
-  if (loading) {
+  // CHANGED: Use subdomainResult.isLoading or loading prop
+  if (subdomainResult.isLoading || loading) {
     return (
       <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6">
         <div className="flex items-center justify-center py-8">
@@ -85,34 +105,37 @@ export const SubdomainResult: React.FC<SubdomainResultProps> = ({
     );
   }
 
-  if (error) {
+  // CHANGED: Check both error sources
+  const displayError = error || subdomainResult.error;
+  if (displayError) {
     return (
       <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6">
         <div className="flex items-center gap-3">
           <AlertCircle className="h-6 w-6 text-red-400" />
           <div>
             <Text className="text-red-400 font-medium">Error</Text>
-            <Text className="text-red-300/80 text-sm">{error}</Text>
+            <Text className="text-red-300/80 text-sm break-words">{displayError}</Text>
           </div>
         </div>
       </div>
     );
   }
 
-  if (availability === null) return null;
+  // CHANGED: Use subdomainResult.isAvailable
+  const isAvailable = subdomainResult.isAvailable;
 
   return (
     <div className={`backdrop-blur-sm border rounded-2xl p-6 ${
-      availability 
+      isAvailable 
         ? 'bg-green-500/10 border-green-500/20' 
         : 'bg-red-500/10 border-red-500/20'
     }`}>
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <div className={`p-2 rounded-full ${
-          availability ? 'bg-green-500/20' : 'bg-red-500/20'
+          isAvailable ? 'bg-green-500/20' : 'bg-red-500/20'
         }`}>
-          {availability ? (
+          {isAvailable ? (
             <Check className="h-6 w-6 text-green-400" />
           ) : (
             <X className="h-6 w-6 text-red-400" />
@@ -120,17 +143,18 @@ export const SubdomainResult: React.FC<SubdomainResultProps> = ({
         </div>
         <div>
           <Text className={`text-xl font-semibold ${
-            availability ? 'text-green-400' : 'text-red-400'
+            isAvailable ? 'text-green-400' : 'text-red-400'
           }`}>
-            {availability ? 'Available' : 'Not Available'}
+            {isAvailable ? 'Available' : 'Not Available'}
           </Text>
-          <Text className="text-white/60">
-            {subdomain}.{parentDomain.name}
+          {/* CHANGED: Use fullName from subdomainResult */}
+          <Text className="text-white/60 break-words">
+            {subdomainResult.fullName}
           </Text>
         </div>
       </div>
 
-      {availability ? (
+      {isAvailable ? (
         <>
           {/* Price and Duration Selection */}
           <div className="grid md:grid-cols-2 gap-6 mb-6">
@@ -142,11 +166,16 @@ export const SubdomainResult: React.FC<SubdomainResultProps> = ({
                   <button
                     key={option.value}
                     onClick={() => setSelectedDuration(option)}
-                    className={`p-3 rounded-xl border transition-colors ${
-                      selectedDuration.value === option.value
+                    // CHANGED: Disable during purchase
+                    disabled={purchasing}
+                    className={`
+                      p-3 rounded-xl border transition-colors
+                      ${selectedDuration.value === option.value
                         ? 'border-primary bg-primary/10 text-primary'
                         : 'border-white/20 bg-white/5 text-white hover:bg-white/10'
-                    }`}
+                      }
+                      ${purchasing ? 'opacity-50 cursor-not-allowed' : ''}
+                    `}
                   >
                     <Text className="text-sm font-medium">{option.label}</Text>
                   </button>
@@ -161,7 +190,9 @@ export const SubdomainResult: React.FC<SubdomainResultProps> = ({
                 <div className="bg-white/5 rounded-xl p-4 space-y-3">
                   <div className="flex justify-between">
                     <Text className="text-white/60">Base Price:</Text>
-                    <Text className="font-medium">{price ? formatPrice(price) : '—'}</Text>
+                    <Text className="font-medium">
+                      {formatPrice(subdomainResult.price)}
+                    </Text>
                   </div>
                   <div className="flex justify-between">
                     <Text className="text-white/60">Duration:</Text>
@@ -193,6 +224,10 @@ export const SubdomainResult: React.FC<SubdomainResultProps> = ({
                     day: 'numeric'
                   })}
                 </Text>
+                {/* CHANGED: Show parent domain info */}
+                <Text className="text-blue-300/60 text-xs mt-1">
+                  Under: {subdomainResult.parentDomain}.atgraphite
+                </Text>
               </div>
             </div>
           </div>
@@ -200,15 +235,29 @@ export const SubdomainResult: React.FC<SubdomainResultProps> = ({
           {/* Purchase Button */}
           <Button
             onClick={handlePurchase}
-            disabled={purchasing || !price}
-            className={`w-full py-4 rounded-xl font-semibold transition-all ${
-              !purchasing && price !== null
+            disabled={purchasing || subdomainResult.price === BigInt(0)}
+            className={`
+              w-full py-4 rounded-xl font-semibold transition-all
+              ${!purchasing && subdomainResult.price !== BigInt(0)
                 ? 'bg-primary hover:bg-primary/80 text-black'
                 : 'bg-white/10 text-white/40 cursor-not-allowed'
-            }`}
+              }
+            `}
           >
-            {purchasing ? 'Creating Subdomain...' : `Create Subdomain for ${formatPrice(getTotalPrice())}`}
+            {/* CHANGED: Better button text */}
+            {purchasing 
+              ? 'Creating Subdomain...' 
+              : `Create Subdomain for ${formatPrice(getTotalPrice())}`
+            }
           </Button>
+
+          {/* CHANGED: Added loading indicator during purchase */}
+          {purchasing && (
+            <div className="mt-4 flex items-center justify-center gap-2 text-white/60">
+              <div className="w-4 h-4 border-2 border-white/20 border-t-primary rounded-full animate-spin"></div>
+              <Text className="text-sm">Processing subdomain creation...</Text>
+            </div>
+          )}
         </>
       ) : (
         /* Not Available Message */
@@ -217,7 +266,7 @@ export const SubdomainResult: React.FC<SubdomainResultProps> = ({
             This subdomain is already taken or cannot be registered.
           </Text>
           <Text className="text-red-300/60 text-sm">
-            Try a different subdomain name.
+            Try a different subdomain name or check if subdomain pricing is enabled for this domain.
           </Text>
         </div>
       )}

@@ -1,10 +1,17 @@
-// lib/hooks/useSubdomainAvailability.ts
+// lib/hooks/useSubdomainAvailability.ts - Debug Version
 "use client";
 
 import { useState, useCallback } from 'react';
-import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
-import { parseAbi, encodeFunctionData, keccak256, toHex } from 'viem';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
+import { formatEther, keccak256, toBytes, concat, parseAbi, encodeFunctionData } from 'viem';
 
+// Contract addresses
+const SUBDOMAIN_ADDRESS = process.env.NEXT_PUBLIC_SUBDOMAIN_ADDRESS as `0x${string}`;
+const REGISTRY_ADDRESS = process.env.NEXT_PUBLIC_REGISTRY_ADDRESS as `0x${string}`;
+const RESOLVER_ADDRESS = process.env.NEXT_PUBLIC_RESOLVER_ADDRESS as `0x${string}`;
+const TLD_NODE = '0xdb6d6f1b63164285dbeecc46029ccea362278e6a391a29fb0fe4337ec0e6f5fd' as `0x${string}`;
+
+// ABIs
 const SUBDOMAIN_ABI = parseAbi([
   'function priceOfSubdomain(bytes32 parentNode, string label) view returns (uint256)',
   'function buySubdomainFixedPrice(bytes32 parentNode, string label, address resolver_, uint64 duration) payable returns (bytes32)',
@@ -14,207 +21,288 @@ const REGISTRY_ABI = parseAbi([
   'function isAvailable(bytes32 node) view returns (bool)',
 ]);
 
-const SUBDOMAIN_ADDRESS = process.env.NEXT_PUBLIC_SUBDOMAIN_ADDRESS as `0x${string}`;
-const REGISTRY_ADDRESS = process.env.NEXT_PUBLIC_REGISTRY_ADDRESS as `0x${string}`;
-const RESOLVER_ADDRESS = process.env.NEXT_PUBLIC_RESOLVER_ADDRESS as `0x${string}`;
-
-interface Domain {
-  name: string;
-  expiry: Date;
-  daysLeft: number;
-  node: string;
-  isPrimary?: boolean;
+export interface SubdomainResult {
+  subdomain: string;
+  parentDomain: string;
+  fullName: string;
+  isAvailable: boolean;
+  price: bigint;
+  priceInEth: string;
+  isLoading: boolean;
+  error: string | null;
+  subdomainNode?: `0x${string}`;
+  parentNode?: `0x${string}`;
 }
 
-export function useSubdomainAvailability() {
-  const { address } = useAccount();
-  const publicClient = usePublicClient();
-  const { data: walletClient } = useWalletClient();
-  const [availability, setAvailability] = useState<boolean | null>(null);
-  const [price, setPrice] = useState<bigint | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export const useSubdomainAvailability = () => {
+  const [searchedSubdomain, setSearchedSubdomain] = useState<{
+    subdomain: string;
+    parentDomain: string;
+  } | null>(null);
 
-  const generateSubdomainNode = (label: string, parentNode: string): `0x${string}` => {
-    const labelHash = keccak256(toHex(label));
-    return keccak256(`0x${parentNode.slice(2)}${labelHash.slice(2)}` as `0x${string}`);
-  };
+  const { address, isConnected, connector } = useAccount();
+  
+  const { writeContract, data: hash, error: writeError, isPending } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({ 
+    hash,
+  });
 
-  const isUsingGraphiteWallet = () => {
-    return typeof window !== 'undefined' && !!window.graphite;
-  };
+  // Helper function to create node hash
+  const makeNode = useCallback((parent: `0x${string}`, label: string): `0x${string}` => {
+    const labelHash = keccak256(toBytes(label));
+    return keccak256(concat([parent, labelHash]));
+  }, []);
 
-  const checkAvailability = useCallback(async (label: string, parentNode: string) => {
-    if (!publicClient) {
-      setError('Public client not available');
-      return;
+  // Calculate nodes
+  const parentNode = searchedSubdomain ? makeNode(TLD_NODE, searchedSubdomain.parentDomain) : undefined;
+  const subdomainNode = searchedSubdomain && parentNode ? makeNode(parentNode, searchedSubdomain.subdomain) : undefined;
+
+  // ENHANCED: Better logging for debugging
+  console.log('🔍 Debug - Subdomain availability state:', {
+    searchedSubdomain,
+    parentNode,
+    subdomainNode,
+    contractAddresses: {
+      subdomain: SUBDOMAIN_ADDRESS,
+      registry: REGISTRY_ADDRESS,
+      tldNode: TLD_NODE
     }
+  });
 
-    setLoading(true);
-    setError(null);
-    setAvailability(null);
-    setPrice(null);
+  // Check subdomain price with enhanced error handling
+  const { 
+    data: price, 
+    isLoading: priceLoading, 
+    error: priceError,
+    refetch: refetchPrice
+  } = useReadContract({
+    address: SUBDOMAIN_ADDRESS,
+    abi: SUBDOMAIN_ABI,
+    functionName: 'priceOfSubdomain',
+    args: searchedSubdomain && parentNode ? [parentNode, searchedSubdomain.subdomain] : undefined,
+    query: {
+      enabled: !!searchedSubdomain && !!parentNode,
+    },
+  });
 
-    try {
-      // Generate subdomain node
-      const subdomainNode = generateSubdomainNode(label, parentNode);
+  // Enhanced logging for price check
+  console.log('💰 Debug - Price check result:', {
+    price: price?.toString(),
+    priceLoading,
+    priceError: priceError?.message,
+    enabled: !!searchedSubdomain && !!parentNode,
+    args: searchedSubdomain && parentNode ? [parentNode, searchedSubdomain.subdomain] : undefined
+  });
 
-      // Check if subdomain is available
-      const isAvailable = await publicClient.readContract({
-        address: REGISTRY_ADDRESS,
-        abi: REGISTRY_ABI,
-        functionName: 'isAvailable',
-        args: [subdomainNode],
-      });
+  // Check if subdomain is available
+  const { 
+    data: isAvailable, 
+    isLoading: availabilityLoading,
+    error: availabilityError,
+    refetch: refetchAvailability
+  } = useReadContract({
+    address: REGISTRY_ADDRESS,
+    abi: REGISTRY_ABI,
+    functionName: 'isAvailable',
+    args: subdomainNode ? [subdomainNode] : undefined,
+    query: {
+      enabled: !!subdomainNode,
+    },
+  });
 
-      setAvailability(isAvailable);
+  // Enhanced logging for availability check
+  console.log('✅ Debug - Availability check result:', {
+    isAvailable,
+    availabilityLoading,
+    availabilityError: availabilityError?.message,
+    enabled: !!subdomainNode,
+    args: subdomainNode ? [subdomainNode] : undefined
+  });
 
-      if (isAvailable) {
-        try {
-          // Get subdomain price from SubdomainRegistrar
-          const subdomainPrice = await publicClient.readContract({
-            address: SUBDOMAIN_ADDRESS,
-            abi: SUBDOMAIN_ABI,
-            functionName: 'priceOfSubdomain',
-            args: [parentNode as `0x${string}`, label],
-          });
+  const checkSubdomainAvailability = useCallback((subdomain: string, parentDomain: string) => {
+    const cleanSubdomain = subdomain.trim().toLowerCase();
+    const cleanParentDomain = parentDomain.trim().toLowerCase().replace('.atgraphite', '');
+    
+    console.log('🔍 Debug - Checking subdomain availability:', {
+      originalInput: { subdomain, parentDomain },
+      cleanedInput: { cleanSubdomain, cleanParentDomain },
+      fullName: `${cleanSubdomain}.${cleanParentDomain}.atgraphite`
+    });
 
-          setPrice(subdomainPrice);
-        } catch (priceError: any) {
-          // CHANGES: Handle "Price not set" error gracefully
-          console.log('Subdomain price error:', priceError);
-          
-          if (priceError.message?.includes('Price not set') || 
-              priceError.message?.includes('execution reverted')) {
-            // Price not set by parent domain owner - subdomain creation not enabled
-            setError('Subdomain creation is not enabled for this domain. The domain owner needs to set a price first.');
-            setAvailability(false);
-          } else {
-            setError('Failed to get subdomain price');
-          }
-          setPrice(null);
-        }
-      }
-    } catch (err) {
-      console.error('Error checking subdomain availability:', err);
-      setError(err instanceof Error ? err.message : 'Failed to check availability');
-    } finally {
-      setLoading(false);
+    setSearchedSubdomain({
+      subdomain: cleanSubdomain,
+      parentDomain: cleanParentDomain
+    });
+  }, []);
+
+  // Check if user is using Graphite wallet
+  const isUsingGraphiteWallet = useCallback(() => {
+    if (typeof window === 'undefined' || !window.graphite || !connector) {
+      return false;
     }
-  }, [publicClient]);
+    const connectorId = connector.id;
+    const connectorName = connector.name?.toLowerCase() || '';
+    return connectorId === 'graphite' || connectorName.includes('graphite');
+  }, [connector]);
 
-  const purchaseWithGraphite = async (
-    label: string,
-    parentNode: string,
-    duration: number,
-    totalPrice: bigint
+  // Purchase with Graphite wallet
+  const purchaseWithGraphite = useCallback(async (
+    subdomain: string,
+    parentDomain: string,
+    totalPrice: bigint,
+    durationYears: number,
+    resolverAddress?: `0x${string}`
   ) => {
-    if (!address) {
-      throw new Error('Wallet not connected');
+    console.log('🟣 Debug - Graphite subdomain purchase:', {
+      subdomain,
+      parentDomain,
+      totalPrice: totalPrice.toString(),
+      durationYears,
+      parentNode: parentNode?.toString()
+    });
+
+    if (!window.graphite || !parentNode) {
+      throw new Error('Graphite Wallet not available or parent node not found');
     }
 
+    const durationInSeconds = BigInt(durationYears * 365 * 24 * 60 * 60);
+    const resolver = resolverAddress || RESOLVER_ADDRESS;
+    
     const callData = encodeFunctionData({
       abi: SUBDOMAIN_ABI,
       functionName: 'buySubdomainFixedPrice',
-      args: [
-        parentNode as `0x${string}`,
-        label,
-        RESOLVER_ADDRESS,
-        BigInt(duration)
-      ],
+      args: [parentNode, subdomain, resolver, durationInSeconds],
     });
 
-    const txHash = await window.graphite?.sendTx({
+    const txHash = await window.graphite.sendTx({
       to: SUBDOMAIN_ADDRESS,
-      value: totalPrice > 0 ? `0x${totalPrice.toString(16)}` : '0x0',
+      value: `0x${totalPrice.toString(16)}`,
       data: callData,
-      gas: '0x186A0', // 100,000 gas
+      gas: '0x186A0',
     });
 
+    console.log('🟣 Debug - Graphite subdomain transaction sent:', txHash);
     return txHash;
-  };
+  }, [parentNode]);
 
-  const purchaseWithWagmi = async (
-    label: string,
-    parentNode: string,
-    duration: number,
-    totalPrice: bigint
+  // Purchase with standard wallet
+  const purchaseWithWagmi = useCallback(async (
+    subdomain: string,
+    parentDomain: string,
+    totalPrice: bigint,
+    durationYears: number,
+    resolverAddress?: `0x${string}`
   ) => {
-    if (!address || !walletClient) {
-      throw new Error('Wallet not connected');
+    console.log('🔵 Debug - MetaMask subdomain purchase:', {
+      subdomain,
+      parentDomain,
+      totalPrice: totalPrice.toString(),
+      durationYears,
+      parentNode: parentNode?.toString()
+    });
+
+    if (!isConnected || !address || !parentNode) {
+      throw new Error('Wallet not connected or parent node not found');
     }
 
-    const txHash = await walletClient.writeContract({
+    const durationInSeconds = BigInt(durationYears * 365 * 24 * 60 * 60);
+    const resolver = resolverAddress || RESOLVER_ADDRESS;
+    
+    const result = await writeContract({
       address: SUBDOMAIN_ADDRESS,
       abi: SUBDOMAIN_ABI,
       functionName: 'buySubdomainFixedPrice',
-      args: [
-        parentNode as `0x${string}`,
-        label,
-        RESOLVER_ADDRESS,
-        BigInt(duration)
-      ],
+      args: [parentNode, subdomain, resolver, durationInSeconds],
       value: totalPrice,
     });
 
-    return txHash;
-  };
+    console.log('🔵 Debug - MetaMask subdomain transaction submitted:', result);
+    return result;
+  }, [address, isConnected, writeContract, parentNode]);
 
+  // Main purchase function
   const purchaseSubdomain = useCallback(async (
-    label: string,
-    parentDomain: Domain,
-    durationYears: number = 1
+    subdomain: string,
+    parentDomain: string,
+    totalPrice: bigint,
+    durationYears: number,
+    resolverAddress?: `0x${string}`
   ) => {
-    if (!address) {
-      throw new Error('Please connect your wallet');
+    console.log('🚀 Debug - Purchase subdomain called:', {
+      subdomain,
+      parentDomain,
+      totalPrice: totalPrice.toString(),
+      durationYears,
+      wallet: isUsingGraphiteWallet() ? 'Graphite' : 'MetaMask'
+    });
+
+    if (isUsingGraphiteWallet()) {
+      return await purchaseWithGraphite(subdomain, parentDomain, totalPrice, durationYears, resolverAddress);
+    } else {
+      return await purchaseWithWagmi(subdomain, parentDomain, totalPrice, durationYears, resolverAddress);
     }
+  }, [isUsingGraphiteWallet, purchaseWithGraphite, purchaseWithWagmi]);
 
-    if (!price) {
-      throw new Error('Price not available');
+  // Enhanced error message helper
+  function getErrorMessage(priceError: any, availabilityError: any): string | null {
+    const error = priceError || availabilityError;
+    if (!error) return null;
+
+    console.log('❌ Debug - Error details:', {
+      error,
+      message: error.message,
+      cause: error.cause,
+      shortMessage: error.shortMessage
+    });
+
+    const message = error.message?.toLowerCase() || '';
+    
+    if (message.includes('subdomain not available') || message.includes('not available')) {
+      return 'Subdomain pricing not enabled for this domain. Please enable subdomain pricing first.';
     }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const durationSeconds = durationYears * 365 * 24 * 60 * 60;
-      const totalPrice = price * BigInt(durationYears);
-
-      let txHash: string;
-
-      if (isUsingGraphiteWallet()) {
-        txHash = await purchaseWithGraphite(label, parentDomain.node, durationSeconds, totalPrice) ?? "";
-      } else {
-        txHash = await purchaseWithWagmi(label, parentDomain.node, durationSeconds, totalPrice);
-      }
-
-      // Wait for transaction confirmation
-      if (publicClient) {
-        await publicClient.waitForTransactionReceipt({
-          hash: txHash as `0x${string}`,
-        });
-      }
-
-      // Reset state after successful purchase
-      setAvailability(null);
-      setPrice(null);
-
-      return txHash;
-    } catch (err: any) {
-      const errorMessage = err?.message || 'Subdomain purchase failed';
-      setError(errorMessage);
-      throw new Error(errorMessage);
-    } finally {
-      setLoading(false);
+    
+    if (message.includes('no data') || message.includes('0x')) {
+      return 'Network error: Please ensure you are connected to Graphite Testnet';
     }
-  }, [address, price, publicClient]);
+    
+    if (message.includes('contract function')) {
+      return 'Contract not found: Please switch to Graphite Testnet';
+    }
+    
+    if (message.includes('price not set')) {
+      return 'Subdomain pricing not enabled for this domain';
+    }
+    
+    return error.message || 'Unknown error occurred';
+  }
+
+  // Create subdomain result object
+  const subdomainResult: SubdomainResult | null = searchedSubdomain ? {
+    subdomain: searchedSubdomain.subdomain,
+    parentDomain: searchedSubdomain.parentDomain,
+    fullName: `${searchedSubdomain.subdomain}.${searchedSubdomain.parentDomain}.atgraphite`,
+    isAvailable: isAvailable ?? false,
+    price: price ?? 0n,
+    priceInEth: price ? formatEther(price) : '0',
+    isLoading: priceLoading || availabilityLoading,
+    error: getErrorMessage(priceError, availabilityError),
+    subdomainNode,
+    parentNode,
+  } : null;
+
+  console.log('📊 Debug - Final subdomain result:', subdomainResult);
+
+  const purchaseError = writeError || receiptError;
 
   return {
-    checkAvailability,
+    subdomainResult,
+    isSearching: priceLoading || availabilityLoading,
+    checkSubdomainAvailability,
     purchaseSubdomain,
-    availability,
-    price,
-    loading,
-    error,
+    isPurchasing: isPending,
+    isConfirming,
+    isSuccess,
+    purchaseError,
+    txHash: hash,
   };
-}
+};

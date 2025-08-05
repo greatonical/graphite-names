@@ -1,4 +1,4 @@
-// components/ui/TransferModal.tsx
+// components/modal/transfer-domain.modal.tsx
 "use client";
 
 import React, { useState } from 'react';
@@ -27,17 +27,22 @@ export const TransferModal: React.FC<TransferModalProps> = ({
   onSuccess 
 }) => {
   const [recipientAddress, setRecipientAddress] = useState('');
+  // CHANGED: Updated to match your hook's return values
   const { transferDomain, loading, error } = useDomainTransfer();
 
   const handleTransfer = async () => {
     if (!recipientAddress.trim()) return;
-
+    
+    // CHANGED: Added better error handling and success callback
     try {
       await transferDomain(domain.node, recipientAddress.trim());
+      
+      // CHANGED: Call onSuccess first to refresh domain list
       onSuccess();
       onClose();
     } catch (err) {
       console.error('Transfer failed:', err);
+      // CHANGED: Error is now handled by the hook itself via setError
     }
   };
 
@@ -61,6 +66,8 @@ export const TransferModal: React.FC<TransferModalProps> = ({
           <ButtonWrapper
             onClick={onClose}
             className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+            // CHANGED: Disable close button during transfer to prevent issues
+            disabled={loading}
           >
             <X className="h-5 w-5 text-white/60" />
           </ButtonWrapper>
@@ -101,7 +108,14 @@ export const TransferModal: React.FC<TransferModalProps> = ({
             value={recipientAddress}
             onChange={(e) => setRecipientAddress(e.target.value)}
             placeholder="0x..."
-            className="w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-white/40 focus:border-primary focus:outline-none transition-colors"
+            // CHANGED: Disable input during transfer
+            disabled={loading}
+            className={`
+              w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 
+              text-white placeholder-white/40 focus:border-primary focus:outline-none 
+              transition-colors
+              ${loading ? 'opacity-50 cursor-not-allowed' : ''}
+            `}
           />
           {recipientAddress && !isValidAddress(recipientAddress) && (
             <Text className="text-red-400 text-sm mt-2">
@@ -112,8 +126,11 @@ export const TransferModal: React.FC<TransferModalProps> = ({
 
         {/* Error Display */}
         {error && (
-          <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 mb-6 ">
-            <Text className="text-red-400 text-sm break-words">{error}</Text>
+          <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 mb-6">
+            {/* CHANGED: Better error text formatting for long messages */}
+            <Text className="text-red-400 text-sm break-words leading-relaxed">
+              {error}
+            </Text>
           </div>
         )}
 
@@ -121,22 +138,39 @@ export const TransferModal: React.FC<TransferModalProps> = ({
         <div className="flex gap-3">
           <ButtonWrapper
             onClick={onClose}
-            className="flex-1 bg-white/10 hover:bg-white/20 text-white py-3 px-4 rounded-xl transition-colors"
+            // CHANGED: Disable cancel during transfer to prevent issues
+            disabled={loading}
+            className={`
+              flex-1 bg-white/10 hover:bg-white/20 text-white py-3 px-4 
+              rounded-xl transition-colors
+              ${loading ? 'opacity-50 cursor-not-allowed' : ''}
+            `}
           >
             <Text className="font-medium">Cancel</Text>
           </ButtonWrapper>
           <Button
             onClick={handleTransfer}
             disabled={!canTransfer || loading}
-            className={`flex-1 py-3 px-4 rounded-xl transition-colors ${
-              canTransfer && !loading
+            className={`
+              flex-1 py-3 px-4 rounded-xl transition-colors font-medium
+              ${canTransfer && !loading
                 ? 'bg-red-500 hover:bg-red-600 text-white'
                 : 'bg-white/5 text-white/40 cursor-not-allowed'
-            }`}
+              }
+            `}
           >
+            {/* CHANGED: Better loading state text */}
             {loading ? 'Transferring...' : 'Transfer Domain'}
           </Button>
         </div>
+
+        {/* CHANGED: Added loading indicator for better UX */}
+        {loading && (
+          <div className="mt-4 flex items-center justify-center gap-2 text-white/60">
+            <div className="w-4 h-4 border-2 border-white/20 border-t-primary rounded-full animate-spin"></div>
+            <Text className="text-sm">Processing transfer...</Text>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -103,7 +103,7 @@ export const AlternateConnectButton = () => {
         </p>
       </ButtonWrapper> */}
       <ButtonWrapper
-             className="flex flex-row items-center bg-primary text-black-600 rounded-lg px-4 py-4 gap-x-2 hover:bg-opacity-90 transition-colors"
+             className="flex flex-row items-center bg-primary text-black-600 rounded-lg px-4 py-2 mobile:py-4 gap-x-2 hover:bg-opacity-90 transition-colors"
         onClick={handleUseOtherWallets}
       >
         <Icon icon="tdesign:wallet-filled" />

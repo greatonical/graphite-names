@@ -33,7 +33,7 @@ export const NetworkGuard = ({ children }: { children: React.ReactNode }) => {
               Wrong Network
             </h2>
             <p className="text-gray-300 mb-6">
-              Graphite DNS is only available on Graphite Testnet. Please switch networks to continue.
+              Graphite Names is only available on Graphite Testnet. Please switch networks to continue.
             </p>
             <div className="space-y-3">
               {/* <p className="text-sm text-gray-400">

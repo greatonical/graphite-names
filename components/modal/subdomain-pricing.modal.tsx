@@ -1,10 +1,10 @@
-// components/ui/SubdomainPricing.tsx
+// components/modal/subdomain-pricing.modal.tsx
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Settings, DollarSign, CheckCircle } from 'lucide-react';
+import { Settings, DollarSign, CheckCircle, X } from 'lucide-react';
 import { Text } from '../ui/text';
-import { Button } from '../ui/button';
+import { Button, ButtonWrapper } from '../ui/button';
 import { useSubdomainPricing } from '@/lib/hooks/useSubdomainPricing';
 
 interface Domain {
@@ -48,10 +48,12 @@ export const SubdomainPricing: React.FC<SubdomainPricingProps> = ({
 
     try {
       await setSubdomainPrice(domain.node, price);
+      // CHANGED: Call onSuccess first to refresh domain list
       onSuccess();
       onClose();
     } catch (err) {
       console.error('Failed to set subdomain price:', err);
+      // CHANGED: Error is now handled by the hook itself via setError
     }
   };
 
@@ -66,14 +68,24 @@ export const SubdomainPricing: React.FC<SubdomainPricingProps> = ({
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-md border border-white/20 rounded-2xl max-w-md w-full p-6">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="bg-primary/20 p-2 rounded-lg">
-            <Settings className="h-5 w-5 text-primary" />
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="bg-primary/20 p-2 rounded-lg">
+              <Settings className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <Text className="text-xl font-semibold">Subdomain Settings</Text>
+              <Text className="text-white/60 text-sm">{domain.name}</Text>
+            </div>
           </div>
-          <div>
-            <Text className="text-xl font-semibold">Subdomain Settings</Text>
-            <Text className="text-white/60 text-sm">{domain.name}</Text>
-          </div>
+          {/* CHANGED: Added close button with proper disable state */}
+          <ButtonWrapper
+            onClick={onClose}
+            disabled={loading}
+            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+          >
+            <X className="h-5 w-5 text-white/60" />
+          </ButtonWrapper>
         </div>
 
         {/* Current Status */}
@@ -116,7 +128,14 @@ export const SubdomainPricing: React.FC<SubdomainPricingProps> = ({
               placeholder="0.01"
               step="0.001"
               min="0"
-              className="w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-white/40 focus:border-primary focus:outline-none transition-colors pr-12"
+              // CHANGED: Disable input during loading
+              disabled={loading}
+              className={`
+                w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 
+                text-white placeholder-white/40 focus:border-primary focus:outline-none 
+                transition-colors pr-12
+                ${loading ? 'opacity-50 cursor-not-allowed' : ''}
+              `}
             />
             <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/40">
               @G
@@ -143,7 +162,10 @@ export const SubdomainPricing: React.FC<SubdomainPricingProps> = ({
         {/* Error Display */}
         {error && (
           <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 mb-6">
-            <Text className="text-red-400 text-sm">{error}</Text>
+            {/* CHANGED: Better error text formatting for long messages */}
+            <Text className="text-red-400 text-sm break-words leading-relaxed">
+              {error}
+            </Text>
           </div>
         )}
 
@@ -151,22 +173,39 @@ export const SubdomainPricing: React.FC<SubdomainPricingProps> = ({
         <div className="flex gap-3">
           <Button
             onClick={onClose}
-            className="flex-1 bg-white/10 hover:bg-white/20 text-white py-3 px-4 rounded-xl transition-colors"
+            // CHANGED: Disable cancel during loading to prevent issues
+            disabled={loading}
+            className={`
+              flex-1 bg-white/10 hover:bg-white/20 text-white py-3 px-4 
+              rounded-xl transition-colors
+              ${loading ? 'opacity-50 cursor-not-allowed' : ''}
+            `}
           >
             Cancel
           </Button>
           <Button
             onClick={handleSetPrice}
             disabled={!isValidPrice || loading}
-            className={`flex-1 py-3 px-4 rounded-xl transition-colors ${
-              isValidPrice && !loading
+            className={`
+              flex-1 py-3 px-4 rounded-xl transition-colors font-medium
+              ${isValidPrice && !loading
                 ? 'bg-primary hover:bg-primary/80 text-black'
                 : 'bg-white/5 text-white/40 cursor-not-allowed'
-            }`}
+              }
+            `}
           >
+            {/* CHANGED: Better loading state text */}
             {loading ? 'Setting...' : currentPrice ? 'Update Price' : 'Enable Subdomains'}
           </Button>
         </div>
+
+        {/* CHANGED: Added loading indicator for better UX */}
+        {loading && (
+          <div className="mt-4 flex items-center justify-center gap-2 text-white/60">
+            <div className="w-4 h-4 border-2 border-white/20 border-t-primary rounded-full animate-spin"></div>
+            <Text className="text-sm">Processing price update...</Text>
+          </div>
+        )}
       </div>
     </div>
   );
