@@ -1,11 +1,14 @@
 // components/ui/DomainResult.tsx
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { ButtonWrapper } from "./button";
 import { Text } from "./text";
 import { Icon } from "@iconify/react";
 import { DomainResult as DomainResultType } from "@/lib/hooks/useDomainAvailability";
 import { formatEther } from "viem";
+import { useGraphiteKYC } from "@/lib/hooks/useGraphiteKYC";
+import toast from "react-hot-toast";
+import { style } from "@/lib/constants/style.constants";
 
 interface DomainResultProps {
   result: DomainResultType;
@@ -31,14 +34,34 @@ export const DomainResult: React.FC<DomainResultProps> = ({
 
   const { domain, isAvailable, price, priceInEth, isLoading, error } = result;
 
+  const {
+    isKYCVerified,
+    isAccountActivated,
+    canPerformActions,
+    needsKYC,
+    needsActivation,
+    kycLevel,
+    loading: kycLoading,
+    error: kycError,
+  } = useGraphiteKYC();
+
   // Calculate total price based on duration
   const totalPrice = price * BigInt(duration);
   const totalPriceInEth = formatEther(totalPrice);
 
   const handlePurchase = () => {
+    if(isAccountActivated){
     const resolverAddress = customResolver.trim() || undefined;
     onPurchase(domain, totalPrice, duration, resolverAddress as `0x${string}`);
+    } else{
+      toast.error("Please make sure your account is activated", {style: style.toast})
+    }
+
   };
+
+  useEffect(() => {
+    console.log(isAccountActivated, "activation");
+  }, [isAccountActivated]);
 
   if (isLoading) {
     return (
@@ -53,16 +76,19 @@ export const DomainResult: React.FC<DomainResultProps> = ({
 
   if (error) {
     return (
-      <div className="w-full bg-red-900/20 border border-red-500 rounded-lg p-6 mt-4"  style={{
+      <div
+        className="w-full bg-red-900/20 border border-red-500 rounded-lg p-6 mt-4"
+        style={{
           // ANIMATION FIX: Disable all animations on mobile
-          WebkitAnimation: 'none',
-          animation: 'none',
-          WebkitTransition: 'none',
-          transition: 'none',
-          WebkitTransform: 'none',
-          transform: 'none',
-          willChange: 'auto'
-        }}>
+          WebkitAnimation: "none",
+          animation: "none",
+          WebkitTransition: "none",
+          transition: "none",
+          WebkitTransform: "none",
+          transform: "none",
+          willChange: "auto",
+        }}
+      >
         <div className="flex items-center space-x-3">
           <Icon icon="mdi:alert-circle" className="w-6 h-6 text-red-400" />
           <Text className="text-red-400 font-medium">{error}</Text>
@@ -72,16 +98,19 @@ export const DomainResult: React.FC<DomainResultProps> = ({
   }
 
   return (
-    <div className="w-full bg-black-500 backdrop-blur-sm border border-black-300 rounded-lg p-6 mt-4"  style={{
-          // ANIMATION FIX: Disable all animations on mobile
-          WebkitAnimation: 'none',
-          animation: 'none',
-          WebkitTransition: 'none',
-          transition: 'none',
-          WebkitTransform: 'none',
-          transform: 'none',
-          willChange: 'auto'
-        }}>
+    <div
+      className="w-full bg-black-500 backdrop-blur-sm border border-black-300 rounded-lg p-6 mt-4"
+      style={{
+        // ANIMATION FIX: Disable all animations on mobile
+        WebkitAnimation: "none",
+        animation: "none",
+        WebkitTransition: "none",
+        transition: "none",
+        WebkitTransform: "none",
+        transform: "none",
+        willChange: "auto",
+      }}
+    >
       <div className="flex mobile:flex-col items-center mobile:items-start justify-between">
         <div className="flex items-center space-x-4">
           <div
@@ -278,7 +307,7 @@ export const DomainResult: React.FC<DomainResultProps> = ({
         </div>
       )}
 
-           <style jsx>{`
+      <style jsx>{`
         /* Mobile-specific animation fixes for this component only */
         @media screen and (max-width: 768px) {
           .domain-result-container,
