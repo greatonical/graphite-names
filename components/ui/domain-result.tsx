@@ -180,7 +180,7 @@ export const DomainResult: React.FC<DomainResultProps> = ({
 
         {/* Mobile */}
         {isAvailable && (
-          <div className="w-full flex flex-col">
+          <div className="w-full flex flex-col desktop:hidden">
             <view className="flex flex-row-reverse justify-between gap-y-2 items-end desktop:hidden">
               {/* Duration Selector */}
               <div className="flex flex-col items-end space-y-1">
